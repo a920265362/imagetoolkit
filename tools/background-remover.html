@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Background Remover - Remove Image Background Free | Image Toolkit</title>
+  <meta name="description" content="Remove image backgrounds instantly with AI. Make transparent or white backgrounds. Perfect for product photos, e-commerce, and portraits. Free, no upload.">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/background-remover.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="format-converter.html">Convert</a><a href="image-compressor.html">Compress</a><a href="image-cropper.html">Crop</a><a href="color-palette.html">Palette</a><a href="exif-viewer.html">EXIF</a></nav>
+    </div>
+  </header>
+
+  <main class="container tool-container">
+    <div class="tool-header">
+      <h1>🤖 AI Background Remover</h1>
+      <p>Remove image backgrounds in one click. Make transparent PNGs or white backgrounds. Perfect for product photos, e-commerce listings, and profile pictures.</p>
+    </div>
+
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_TOP_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="dz-icon">🪄</div>
+      <h3>Drop an image here or click to browse</h3>
+      <p>AI will automatically remove the background. Works best with clear subjects.</p>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div id="editor" style="display:none;">
+      <div style="display:flex;gap:24px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:250px;">
+          <h3 style="font-size:0.9rem;color:var(--text-light);margin-bottom:8px;">Original</h3>
+          <div style="background:repeating-conic-gradient(#e2e8f0 0% 25%,#fff 0% 50%) 50% / 20px 20px;border-radius:var(--radius);padding:16px;text-align:center;">
+            <img id="originalImg" style="max-height:350px;max-width:100%;">
+          </div>
+        </div>
+        <div style="flex:1;min-width:250px;">
+          <h3 style="font-size:0.9rem;color:var(--text-light);margin-bottom:8px;">Result</h3>
+          <div id="resultBg" style="background:repeating-conic-gradient(#e2e8f0 0% 25%,#fff 0% 50%) 50% / 20px 20px;border-radius:var(--radius);padding:16px;text-align:center;">
+            <img id="resultImg" style="max-height:350px;max-width:100%;display:none;">
+            <div id="loading" style="display:none;padding:40px;"><span class="spinner" style="width:32px;height:32px;"></span><p style="color:var(--text-light);margin-top:12px;">AI is processing...</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls" style="margin-top:16px;">
+        <label>Background:</label>
+        <button class="btn btn-sm" id="bgTransparent" style="background:var(--primary);color:white;">Transparent (PNG)</button>
+        <button class="btn btn-sm btn-secondary" id="bgWhite">White Background</button>
+        <button class="btn btn-sm btn-secondary" id="bgColor">Pick Color</button>
+        <input type="color" id="customBg" value="#ffffff" style="width:36px;height:36px;border:none;cursor:pointer;display:none;">
+      </div>
+
+      <div class="controls" style="margin-top:12px;">
+        <button class="btn btn-success" id="dlPng">Download PNG</button>
+        <button class="btn btn-primary" id="dlJpg">Download JPG</button>
+        <button class="btn btn-secondary" id="retryBtn">Try Another Image</button>
+      </div>
+    </div>
+
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_BOTTOM_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+
+    <section style="margin-top:48px;">
+      <h2 style="font-size:1.3rem;margin-bottom:12px;">How AI Background Removal Works</h2>
+      <ol style="color:var(--text-light);padding-left:20px;line-height:2;">
+        <li>Upload your image — product photo, portrait, or any image with a clear subject</li>
+        <li>AI automatically detects and removes the background</li>
+        <li>Choose transparent background (PNG) or white background</li>
+        <li>Download your image. For best results, use images with clear contrast between subject and background.</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+
+  <script type="module">
+    import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm';
+
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const editor=document.getElementById('editor'),originalImg=document.getElementById('originalImg');
+    const resultImg=document.getElementById('resultImg'),loading=document.getElementById('loading');
+    const bgTransparent=document.getElementById('bgTransparent'),bgWhite=document.getElementById('bgWhite');
+    const bgColor=document.getElementById('bgColor'),customBg=document.getElementById('customBg');
+    const dlPng=document.getElementById('dlPng'),dlJpg=document.getElementById('dlJpg');
+    const retryBtn=document.getElementById('retryBtn');
+    let currentBg='transparent',resultBlob,origFile;
+    const checkboard='repeating-conic-gradient(#e2e8f0 0% 25%,#fff 0% 50%) 50% / 20px 20px';
+
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])process(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',e=>{if(e.target.files[0])process(e.target.files[0]);});
+
+    bgTransparent.addEventListener('click',()=>{currentBg='transparent';updateBgUI();applyBg();});
+    bgWhite.addEventListener('click',()=>{currentBg='white';updateBgUI();applyBg();});
+    bgColor.addEventListener('click',()=>{currentBg=customBg.value;customBg.style.display='inline-block';updateBgUI();applyBg();});
+    customBg.addEventListener('input',()=>{currentBg=customBg.value;applyBg();});
+
+    function updateBgUI(){
+      [bgTransparent,bgWhite,bgColor].forEach(b=>{b.style.background='';b.style.color='';b.className='btn btn-sm btn-secondary';});
+      if(currentBg==='transparent'){bgTransparent.style.background='var(--primary)';bgTransparent.style.color='white';bgTransparent.className='btn btn-sm';}
+      else if(currentBg==='white'){bgWhite.style.background='var(--primary)';bgWhite.style.color='white';bgWhite.className='btn btn-sm';}
+      else{bgColor.style.background='var(--primary)';bgColor.style.color='white';bgColor.className='btn btn-sm';}
+    }
+
+    function applyBg(){
+      if(!resultBlob)return;
+      const url=currentBg==='transparent'?URL.createObjectURL(resultBlob):URL.createObjectURL(resultBlob);
+      if(currentBg==='transparent'){
+        document.getElementById('resultBg').style.background=checkboard;
+        resultImg.src=URL.createObjectURL(resultBlob);
+      }else if(currentBg==='white'){
+        document.getElementById('resultBg').style.background='#fff';
+        renderWithBg('#ffffff');
+      }else{
+        document.getElementById('resultBg').style.background=currentBg;
+        renderWithBg(currentBg);
+      }
+    }
+
+    async function renderWithBg(bgColor){
+      const img=await createImageBitmap(resultBlob);
+      const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+      const ctx=c.getContext('2d');ctx.fillStyle=bgColor;ctx.fillRect(0,0,c.width,c.height);
+      ctx.drawImage(img,0,0);
+      const b=await new Promise(r=>c.toBlob(r,'image/png'));
+      resultImg.src=URL.createObjectURL(b);
+    }
+
+    async function process(file){
+      origFile=file;
+      const url=URL.createObjectURL(file);originalImg.src=url;
+      editor.style.display='block';resultImg.style.display='none';loading.style.display='block';
+      try{
+        const blob=await removeBackground(file,{progress:(k)=>{console.log(`BG removal: ${Math.round(k*100)}%`);}});
+        resultBlob=blob;loading.style.display='none';resultImg.style.display='block';
+        if(currentBg==='transparent'){
+          document.getElementById('resultBg').style.background=checkboard;
+          resultImg.src=URL.createObjectURL(blob);
+        }else{applyBg();}
+        toast('Background removed! 🎉');
+      }catch(e){
+        loading.style.display='none';
+        toast('Error: '+e.message+'. Try a different image.');
+        console.error(e);
+      }
+    }
+
+    dlPng.addEventListener('click',()=>{if(!resultBlob){toast('Process an image first.');return;}const u=URL.createObjectURL(resultBlob);dl(u,'no-bg.png');});
+    dlJpg.addEventListener('click',async()=>{
+      if(!resultBlob){toast('Process an image first.');return;}
+      const img=await createImageBitmap(resultBlob);
+      const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+      const ctx=c.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,c.width,c.height);
+      ctx.drawImage(img,0,0);
+      const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.95));
+      dl(URL.createObjectURL(b),'white-bg.jpg');
+    });
+
+    retryBtn.addEventListener('click',()=>{editor.style.display='none';resultBlob=null;fileInput.value='';originalImg.src='';resultImg.src='';loading.style.display='none';currentBg='transparent';updateBgUI();});
+
+    function dl(u,n){const a=document.createElement('a');a.href=u;a.download=n;a.click();}
+    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+  </script>
+</body>
+</html>
