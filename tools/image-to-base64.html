@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image to Base64 Converter - Encode Images Online Free | Image Toolkit</title>
+  <meta name="description" content="Convert images to Base64 data URIs for embedding in HTML, CSS, or JSON. Supports PNG, JPG, WebP, GIF, SVG. Free online tool with instant results.">
+  <meta name="keywords" content="image to base64, base64 encode image, data uri converter, embed image html, base64 image">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/image-to-base64.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo">
+        <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>
+        Image Toolkit
+      </a>
+      <nav>
+        <a href="../index.html">Home</a>
+        <a href="webp-converter.html">WebP Converter</a>
+        <a href="image-compressor.html">Compressor</a>
+        <a href="exif-viewer.html">EXIF</a>
+        <a href="color-palette.html">Palette</a>
+        <a href="image-to-base64.html" class="active">Base64</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container tool-container">
+    <div class="tool-header">
+      <h1>Image to Base64 Converter</h1>
+      <p>Convert any image to a Base64 data URI for embedding directly in HTML, CSS, or JSON. No upload required.</p>
+    </div>
+
+    <div class="ad-placeholder">
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_TOP_SLOT" data-ad-format="auto" data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="dz-icon">🔤</div>
+      <h3>Drop an image here or click to browse</h3>
+      <p>Supports PNG, JPG, WebP, GIF, SVG, BMP, and ICO</p>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div id="results" style="display:none;">
+      <div class="preview-area active">
+        <img id="previewImg" style="max-height:250px;">
+      </div>
+
+      <div class="file-info">
+        <div class="row"><span>File name</span><span id="infoName"></span></div>
+        <div class="row"><span>File size</span><span id="infoSize"></span></div>
+        <div class="row"><span>MIME type</span><span id="infoMime"></span></div>
+        <div class="row"><span>Base64 length</span><span id="infoB64"></span></div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <label style="font-weight:500;">Output format:</label>
+        <select id="outputStyle" style="margin-left:8px;">
+          <option value="datauri">Data URI (for HTML/CSS)</option>
+          <option value="base64">Base64 only</option>
+          <option value="markdown">Markdown image</option>
+          <option value="html">HTML img tag</option>
+          <option value="css">CSS background</option>
+        </select>
+      </div>
+
+      <div class="base64-output" id="b64Output" style="margin-top:12px;">
+        <button class="btn btn-sm btn-primary copy-btn" id="copyBtn">Copy</button>
+      </div>
+    </div>
+
+    <div class="ad-placeholder">
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_BOTTOM_SLOT" data-ad-format="auto"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <section style="margin-top:48px;">
+      <h2 style="font-size:1.3rem; margin-bottom:12px;">What is Base64 Image Encoding?</h2>
+      <p style="color:var(--text-light); line-height:1.8;">
+        Base64 encoding converts binary image data into a text string that can be embedded directly in HTML, CSS, or JSON. This eliminates the need for separate image file requests but increases file size by approximately 33%.
+      </p>
+      <h3 style="font-size:1rem; margin-top:16px; margin-bottom:8px;">Common Uses:</h3>
+      <ul style="color:var(--text-light); padding-left:20px; line-height:2;">
+        <li>Embedding small icons and logos in HTML emails</li>
+        <li>Inline images in CSS (background images)</li>
+        <li>Storing images in JSON data or databases</li>
+        <li>Prototyping and single-file HTML demos</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Image Toolkit. All processing happens locally in your browser. <a href="../privacy.html">Privacy Policy</a></p>
+  </footer>
+
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const results = document.getElementById('results');
+    const previewImg = document.getElementById('previewImg');
+    const b64Output = document.getElementById('b64Output');
+    const outputStyle = document.getElementById('outputStyle');
+    const copyBtn = document.getElementById('copyBtn');
+    let currentDataUri = '';
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+    outputStyle.addEventListener('change', () => {
+      if (currentDataUri) updateOutput(currentDataUri);
+    });
+
+    function loadFile(file) {
+      if (!file.type.startsWith('image/')) { toast('Please select an image file.'); return; }
+
+      const url = URL.createObjectURL(file);
+      previewImg.src = url;
+      results.style.display = 'block';
+
+      document.getElementById('infoName').textContent = file.name;
+      document.getElementById('infoSize').textContent = formatSize(file.size);
+      document.getElementById('infoMime').textContent = file.type || 'unknown';
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        currentDataUri = e.target.result;
+        document.getElementById('infoB64').textContent = formatSize(currentDataUri.length);
+        updateOutput(currentDataUri);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function updateOutput(dataUri) {
+      const base64 = dataUri.split(',')[1];
+      let output;
+
+      switch (outputStyle.value) {
+        case 'datauri':
+          output = dataUri;
+          break;
+        case 'base64':
+          output = base64;
+          break;
+        case 'markdown':
+          output = `![Image](${dataUri})`;
+          break;
+        case 'html':
+          output = `<img src="${dataUri}" alt="Image" />`;
+          break;
+        case 'css':
+          output = `background-image: url(${dataUri});`;
+          break;
+      }
+
+      b64Output.innerHTML = `<button class="btn btn-sm btn-primary copy-btn" id="copyBtn">Copy</button><pre style="white-space:pre-wrap;word-break:break-all;margin-top:8px;">${escapeHTML(output)}</pre>`;
+      document.getElementById('copyBtn').addEventListener('click', () => copyText(output));
+    }
+
+    copyBtn.addEventListener('click', () => {
+      if (currentDataUri) {
+        const base64 = currentDataUri.split(',')[1];
+        const style = outputStyle.value;
+        let text;
+        switch (style) {
+          case 'datauri': text = currentDataUri; break;
+          case 'base64': text = base64; break;
+          case 'markdown': text = `![Image](${currentDataUri})`; break;
+          case 'html': text = `<img src="${currentDataUri}" alt="Image" />`; break;
+          case 'css': text = `background-image: url(${currentDataUri});`; break;
+        }
+        copyText(text);
+      }
+    });
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard!')).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+        toast('Copied to clipboard!');
+      });
+    }
+
+    function escapeHTML(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function formatSize(b) {
+      return b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function toast(msg) {
+      const t = document.createElement('div');
+      t.className = 'toast'; t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
+    }
+  </script>
+</body>
+</html>

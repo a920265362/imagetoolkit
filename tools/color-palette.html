@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Palette Generator - Extract Colors from Image | Image Toolkit</title>
+  <meta name="description" content="Extract beautiful color palettes from any image. Upload a photo and get the dominant colors instantly. Free online tool for designers.">
+  <meta name="keywords" content="color palette generator, extract colors from image, color scheme, image colors, design palette, brand colors">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/color-palette.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo">
+        <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>
+        Image Toolkit
+      </a>
+      <nav>
+        <a href="../index.html">Home</a>
+        <a href="webp-converter.html">WebP Converter</a>
+        <a href="image-compressor.html">Compressor</a>
+        <a href="exif-viewer.html">EXIF</a>
+        <a href="color-palette.html" class="active">Palette</a>
+        <a href="image-to-base64.html">Base64</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container tool-container">
+    <div class="tool-header">
+      <h1>Color Palette Generator</h1>
+      <p>Upload an image and instantly extract its dominant colors. Perfect for designers, branding, and finding color inspiration.</p>
+    </div>
+
+    <div class="ad-placeholder">
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_TOP_SLOT" data-ad-format="auto" data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="dz-icon">🎨</div>
+      <h3>Drop an image here or click to browse</h3>
+      <p>Extract dominant colors from any image</p>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div id="results" style="display:none;">
+      <div class="preview-area active">
+        <img id="previewImg" style="max-height:300px;">
+      </div>
+
+      <div style="margin-top:16px;">
+        <label style="font-weight:500;">Number of colors:</label>
+        <select id="colorCount" style="margin-left:8px;">
+          <option value="5" selected>5</option>
+          <option value="8">8</option>
+          <option value="12">12</option>
+          <option value="16">16</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="generateBtn" style="margin-left:8px;">Generate Palette</button>
+      </div>
+
+      <h3 style="margin-top:20px; margin-bottom:8px;">🎨 Color Palette</h3>
+      <div class="palette" id="palette"></div>
+
+      <div id="colorTable" style="margin-top:12px;"></div>
+    </div>
+
+    <div class="ad-placeholder">
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_BOTTOM_SLOT" data-ad-format="auto"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <section style="margin-top:48px;">
+      <h2 style="font-size:1.3rem; margin-bottom:12px;">How to Generate a Color Palette from an Image</h2>
+      <ol style="color:var(--text-light); padding-left:20px; line-height:2;">
+        <li>Upload any image — photo, artwork, screenshot, or logo</li>
+        <li>Choose how many colors you want to extract</li>
+        <li>Click "Generate Palette" to see the dominant colors</li>
+        <li>Click any color to copy its hex code to clipboard</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Image Toolkit. All processing happens locally in your browser. <a href="../privacy.html">Privacy Policy</a></p>
+  </footer>
+
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const results = document.getElementById('results');
+    const previewImg = document.getElementById('previewImg');
+    const colorCount = document.getElementById('colorCount');
+    const generateBtn = document.getElementById('generateBtn');
+    const palette = document.getElementById('palette');
+    const colorTable = document.getElementById('colorTable');
+    let imageData = null;
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+    generateBtn.addEventListener('click', () => {
+      if (imageData) extractColors(imageData, parseInt(colorCount.value));
+    });
+
+    colorCount.addEventListener('change', () => {
+      if (imageData) extractColors(imageData, parseInt(colorCount.value));
+    });
+
+    function loadFile(file) {
+      if (!file.type.startsWith('image/')) { toast('Please select an image file.'); return; }
+      const url = URL.createObjectURL(file);
+      previewImg.src = url;
+      results.style.display = 'block';
+
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const maxDim = 300;
+        const scale = Math.min(maxDim / img.width, maxDim / img.height);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        extractColors(imageData, parseInt(colorCount.value));
+      };
+      img.src = url;
+    }
+
+    function extractColors(data, k) {
+      const pixels = [];
+      for (let i = 0; i < data.data.length; i += 4) {
+        pixels.push([data.data[i], data.data[i+1], data.data[i+2]]);
+      }
+
+      // Simple k-means clustering
+      const colors = kMeans(pixels, k);
+
+      // Sort by frequency
+      colors.sort((a, b) => b.count - a.count);
+
+      // Render
+      palette.innerHTML = colors.map(c => {
+        const hex = rgbToHex(c.r, c.g, c.b);
+        const textColor = (c.r * 0.299 + c.g * 0.587 + c.b * 0.114) > 128 ? '#000' : '#fff';
+        return `<div class="swatch" style="background:${hex};color:${textColor};" onclick="copyColor('${hex}')" title="Click to copy ${hex}">
+          <span>${hex}</span>
+        </div>`;
+      }).join('');
+
+      colorTable.innerHTML = colors.map(c => {
+        const hex = rgbToHex(c.r, c.g, c.b);
+        const rgb = `rgb(${c.r}, ${c.g}, ${c.b})`;
+        return `<div style="display:flex;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="copyColor('${hex}')">
+          <div style="width:32px;height:32px;border-radius:6px;background:${hex};margin-right:12px;"></div>
+          <span style="font-family:monospace;font-size:0.9rem;">${hex}</span>
+          <span style="color:var(--text-light);margin-left:12px;font-size:0.85rem;">${rgb}</span>
+          <span style="margin-left:auto;color:var(--text-light);font-size:0.8rem;">${((c.count / pixels.length) * 100).toFixed(1)}%</span>
+        </div>`;
+      }).join('');
+    }
+
+    function kMeans(pixels, k) {
+      // Initialize with random pixels
+      let centroids = [];
+      const used = new Set();
+      while (centroids.length < k) {
+        const idx = Math.floor(Math.random() * pixels.length);
+        if (!used.has(idx)) { used.add(idx); centroids.push([...pixels[idx]]); }
+      }
+
+      let assignments = new Array(pixels.length).fill(0);
+      let changed = true;
+      let iter = 0;
+
+      while (changed && iter < 10) {
+        changed = false;
+        iter++;
+
+        // Assign pixels to nearest centroid
+        for (let i = 0; i < pixels.length; i++) {
+          let minDist = Infinity, minIdx = 0;
+          for (let j = 0; j < k; j++) {
+            const dr = pixels[i][0] - centroids[j][0];
+            const dg = pixels[i][1] - centroids[j][1];
+            const db = pixels[i][2] - centroids[j][2];
+            const dist = dr*dr + dg*dg + db*db;
+            if (dist < minDist) { minDist = dist; minIdx = j; }
+          }
+          if (assignments[i] !== minIdx) { changed = true; assignments[i] = minIdx; }
+        }
+
+        // Recalculate centroids
+        const sums = Array.from({length: k}, () => [0, 0, 0]);
+        const counts = new Array(k).fill(0);
+        for (let i = 0; i < pixels.length; i++) {
+          const c = assignments[i];
+          sums[c][0] += pixels[i][0];
+          sums[c][1] += pixels[i][1];
+          sums[c][2] += pixels[i][2];
+          counts[c]++;
+        }
+        for (let j = 0; j < k; j++) {
+          if (counts[j] > 0) {
+            centroids[j] = [
+              Math.round(sums[j][0] / counts[j]),
+              Math.round(sums[j][1] / counts[j]),
+              Math.round(sums[j][2] / counts[j])
+            ];
+          }
+        }
+      }
+
+      const counts = new Array(k).fill(0);
+      for (const a of assignments) counts[a]++;
+
+      return centroids.map((c, i) => ({ r: c[0], g: c[1], b: c[2], count: counts[i] }));
+    }
+
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0').toUpperCase()).join('');
+    }
+
+    window.copyColor = function(hex) {
+      navigator.clipboard.writeText(hex).then(() => toast(`Copied ${hex}!`)).catch(() => toast('Copy failed'));
+    };
+
+    function toast(msg) {
+      const t = document.createElement('div');
+      t.className = 'toast'; t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
+    }
+  </script>
+</body>
+</html>

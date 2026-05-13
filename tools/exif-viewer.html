@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EXIF Metadata Viewer & Remover - Free Online | Image Toolkit</title>
+  <meta name="description" content="View and remove EXIF metadata from your photos. See camera model, GPS location, date taken, and more. Remove EXIF data for privacy. Works in your browser.">
+  <meta name="keywords" content="exif viewer, exif remover, remove exif data, view photo metadata, gps photo location, image privacy">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/exif-viewer.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo">
+        <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>
+        Image Toolkit
+      </a>
+      <nav>
+        <a href="../index.html">Home</a>
+        <a href="webp-converter.html">WebP Converter</a>
+        <a href="image-compressor.html">Compressor</a>
+        <a href="exif-viewer.html" class="active">EXIF</a>
+        <a href="color-palette.html">Palette</a>
+        <a href="image-to-base64.html">Base64</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container tool-container">
+    <div class="tool-header">
+      <h1>EXIF Metadata Viewer & Remover</h1>
+      <p>See what hidden information your photos contain — camera model, GPS coordinates, date taken, and more. Remove EXIF data to protect your privacy before sharing online.</p>
+    </div>
+
+    <div class="ad-placeholder">
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_TOP_SLOT" data-ad-format="auto" data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="dz-icon">📋</div>
+      <h3>Drop a photo here to view its EXIF data</h3>
+      <p>Supports JPG and TIFF images with EXIF metadata</p>
+      <input type="file" id="fileInput" accept="image/jpeg,image/tiff">
+    </div>
+
+    <div id="results" style="display:none;">
+
+      <div class="preview-area active">
+        <h3 style="font-size:0.9rem;color:var(--text-light);margin-bottom:8px;">Image Preview</h3>
+        <img id="previewImg">
+      </div>
+
+      <div style="margin-top:16px;">
+        <h3 style="margin-bottom:8px;">📋 EXIF Metadata</h3>
+        <table class="exif-table" id="exifTable">
+          <thead><tr><th>Property</th><th>Value</th></tr></thead>
+          <tbody id="exifBody"></tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:16px;">
+        <button class="btn btn-primary" id="removeExifBtn">Remove EXIF Data & Download</button>
+        <button class="btn btn-secondary" id="clearBtn">Clear</button>
+      </div>
+    </div>
+
+    <div class="ad-placeholder">
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_BOTTOM_SLOT" data-ad-format="auto"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <section style="margin-top:48px;">
+      <h2 style="font-size:1.3rem; margin-bottom:12px;">What is EXIF Data?</h2>
+      <p style="color:var(--text-light); line-height:1.8;">
+        EXIF (Exchangeable Image File Format) is metadata stored in your photos by cameras and smartphones. It can include:
+      </p>
+      <ul style="color:var(--text-light); padding-left:20px; line-height:2; margin-top:8px;">
+        <li><strong>Camera information</strong> — make, model, lens, focal length</li>
+        <li><strong>GPS coordinates</strong> — exact location where the photo was taken</li>
+        <li><strong>Date and time</strong> — when the photo was captured</li>
+        <li><strong>Exposure settings</strong> — ISO, aperture, shutter speed</li>
+        <li><strong>Software</strong> — programs used to edit the image</li>
+      </ul>
+      <p style="color:var(--text-light); margin-top:16px;">
+        <strong>Why remove EXIF?</strong> Sharing photos with EXIF data can reveal your location, device info, and more. Always remove EXIF before sharing sensitive photos on social media or public forums.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Image Toolkit. All processing happens locally in your browser. <a href="../privacy.html">Privacy Policy</a></p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/exifreader@4.22.0/dist/exif-reader.js"></script>
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const results = document.getElementById('results');
+    const previewImg = document.getElementById('previewImg');
+    const exifBody = document.getElementById('exifBody');
+    const removeExifBtn = document.getElementById('removeExifBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    let originalFile;
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+    const TAG_NAMES = {
+      'Make': 'Camera Make', 'Model': 'Camera Model', 'Software': 'Software',
+      'DateTimeOriginal': 'Date Taken', 'DateTime': 'Date Modified',
+      'GPSLatitude': 'GPS Latitude', 'GPSLongitude': 'GPS Longitude',
+      'GPSLatitudeRef': 'GPS Lat Ref', 'GPSLongitudeRef': 'GPS Long Ref',
+      'ISOSpeedRatings': 'ISO', 'FNumber': 'Aperture (f/)',
+      'ExposureTime': 'Shutter Speed', 'FocalLength': 'Focal Length',
+      'Flash': 'Flash', 'WhiteBalance': 'White Balance',
+      'ImageWidth': 'Image Width', 'ImageLength': 'Image Height',
+      'Orientation': 'Orientation', 'ColorSpace': 'Color Space',
+      'LensModel': 'Lens Model', 'LensMake': 'Lens Make',
+      'Copyright': 'Copyright', 'Artist': 'Artist',
+      'XResolution': 'X Resolution', 'YResolution': 'Y Resolution',
+      'GPSAltitude': 'GPS Altitude', 'GPSImgDirection': 'GPS Direction'
+    };
+
+    function loadFile(file) {
+      if (!file.type.startsWith('image/')) { toast('Please select an image file.'); return; }
+      originalFile = file;
+      const url = URL.createObjectURL(file);
+      previewImg.src = url;
+      results.style.display = 'block';
+
+      // Extract EXIF
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const tags = ExifReader.load(e.target.result);
+          let rows = '';
+          let hasData = false;
+
+          for (const [key, tag] of Object.entries(tags)) {
+            if (key === 'thumbnail' || key === 'Thumbnail') continue;
+            let value = tag.description;
+            if (!value || value === '') continue;
+            hasData = true;
+
+            // Format GPS
+            if (key === 'GPSLatitude' || key === 'GPSLongitude') {
+              const ref = key === 'GPSLatitude' ? tags['GPSLatitudeRef'] : tags['GPSLongitudeRef'];
+              if (ref) value += ' ' + ref.description;
+            }
+
+            const name = TAG_NAMES[key] || key;
+            rows += `<tr><td>${name}</td><td>${value}</td></tr>`;
+          }
+
+          if (!hasData) {
+            rows = '<tr><td colspan="2" style="text-align:center;color:var(--text-light);">No EXIF data found in this image.</td></tr>';
+          }
+
+          exifBody.innerHTML = rows;
+        } catch(err) {
+          exifBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--danger);">Could not read EXIF data. This image may not have metadata.</td></tr>';
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    removeExifBtn.addEventListener('click', async () => {
+      if (!originalFile) return;
+      removeExifBtn.disabled = true;
+      removeExifBtn.innerHTML = '<span class="spinner"></span> Processing...';
+
+      const img = await createImageBitmap(originalFile);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      // Convert to JPEG which strips EXIF
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92));
+      const url = URL.createObjectURL(blob);
+      const name = originalFile.name.replace(/\.[^.]+$/, '') + '-no-exif.jpg';
+      const a = document.createElement('a');
+      a.href = url; a.download = name; a.click();
+
+      removeExifBtn.innerHTML = 'Remove EXIF Data & Download';
+      removeExifBtn.disabled = false;
+      toast('EXIF data removed! Downloaded clean image.');
+    });
+
+    clearBtn.addEventListener('click', () => {
+      originalFile = null;
+      results.style.display = 'none';
+      previewImg.src = '';
+      exifBody.innerHTML = '';
+      fileInput.value = '';
+    });
+
+    function toast(msg) {
+      const t = document.createElement('div');
+      t.className = 'toast'; t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
+    }
+  </script>
+</body>
+</html>
