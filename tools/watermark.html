@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Watermark Images Online Free - Add Text or Logo | Image Toolkit</title>
+  <meta name="description" content="Add text or image watermarks to your photos. Protect your images with custom watermarks. Free online tool, browser-based.">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/watermark.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="webp-converter.html">Converter</a><a href="image-compressor.html">Compressor</a><a href="exif-viewer.html">EXIF</a><a href="color-palette.html">Palette</a><a href="image-to-base64.html">Base64</a></nav>
+    </div>
+  </header>
+  <main class="container tool-container">
+    <div class="tool-header"><h1>Watermark Images</h1><p>Add custom text or logo watermarks to protect your images before sharing online.</p></div>
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_TOP_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+
+    <div class="drop-zone" id="dropZone"><div class="dz-icon">🏷️</div><h3>Drop an image here or click to browse</h3><p>Supports all image formats</p><input type="file" id="fileInput" accept="image/*"></div>
+
+    <div id="editor" style="display:none;">
+      <div class="controls">
+        <label><input type="radio" name="wmType" value="text" checked> Text</label>
+        <label style="margin-left:16px;"><input type="radio" name="wmType" value="image"> Image Logo</label>
+      </div>
+      <div class="controls" id="textOpts">
+        <input type="text" id="wmText" value="© Your Name" style="padding:8px;border:1px solid var(--border);border-radius:6px;flex:1;min-width:150px;">
+        <input type="color" id="wmColor" value="#ffffff" style="width:40px;height:36px;border:none;cursor:pointer;">
+        <label>Size: <input type="range" id="wmSize" min="12" max="120" value="36"></label>
+        <label>Opacity: <input type="range" id="wmOpacity" min="10" max="100" value="50"></label>
+      </div>
+      <div class="controls" id="imgOpts" style="display:none;">
+        <label>Logo: <input type="file" id="logoFile" accept="image/*"></label>
+        <label>Size: <input type="range" id="logoSize" min="20" max="200" value="80"></label>
+      </div>
+      <div class="controls">
+        <label>Position:</label>
+        <select id="position">
+          <option value="center">Center</option>
+          <option value="tl">Top Left</option>
+          <option value="tr">Top Right</option>
+          <option value="bl">Bottom Left</option>
+          <option value="br" selected>Bottom Right</option>
+        </select>
+        <button class="btn btn-primary" id="applyBtn">Apply Watermark</button>
+        <button class="btn btn-success" id="dlBtn" disabled>Download</button>
+      </div>
+      <div class="preview-area active" style="margin-top:16px;"><canvas id="canvas" style="max-width:100%;max-height:400px;border:1px solid var(--border);border-radius:var(--radius);"></canvas></div>
+    </div>
+
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_BOTTOM_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+  </main>
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+
+  <script>
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const editor=document.getElementById('editor'),canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+    const textOpts=document.getElementById('textOpts'),imgOpts=document.getElementById('imgOpts');
+    let origImg,logoImg;
+
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])load(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',e=>{if(e.target.files[0])load(e.target.files[0]);});
+
+    document.querySelectorAll('input[name="wmType"]').forEach(r=>r.addEventListener('change',()=>{
+      textOpts.style.display=r.value==='text'?'flex':'none';
+      imgOpts.style.display=r.value==='image'?'flex':'none';
+    }));
+
+    document.getElementById('logoFile').addEventListener('change',e=>{
+      if(e.target.files[0]){const u=URL.createObjectURL(e.target.files[0]);logoImg=new Image();logoImg.src=u;}
+    });
+
+    function load(f){
+      const url=URL.createObjectURL(f);origImg=new Image();
+      origImg.onload=()=>{canvas.width=origImg.width;canvas.height=origImg.height;ctx.drawImage(origImg,0,0);editor.style.display='block';document.getElementById('dlBtn').disabled=true;};
+      origImg.src=url;
+    }
+
+    document.getElementById('applyBtn').addEventListener('click',()=>{
+      if(!origImg)return;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(origImg,0,0);
+      const type=document.querySelector('input[name="wmType"]:checked').value;
+      const pos=document.getElementById('position').value;
+
+      if(type==='text'){
+        const text=document.getElementById('wmText').value;
+        const size=document.getElementById('wmSize').value;
+        const color=document.getElementById('wmColor').value;
+        const alpha=document.getElementById('wmOpacity').value/100;
+        ctx.font=`bold ${size}px sans-serif`;
+        ctx.fillStyle=color+'80';ctx.strokeStyle='rgba(0,0,0,0.5)';ctx.lineWidth=2;
+        const m=ctx.measureText(text);
+        const[w,h]=[m.width,size*1.2];
+        const[p]=getPos(pos,canvas.width,canvas.height,w,h,20);
+        ctx.globalAlpha=alpha;ctx.strokeText(text,p.x,p.y+h);ctx.fillText(text,p.x,p.y+h);ctx.globalAlpha=1;
+      }else if(logoImg){
+        const s=document.getElementById('logoSize').value/100;
+        const lw=logoImg.width*s,lh=logoImg.height*s;
+        const[p]=getPos(pos,canvas.width,canvas.height,lw,lh,20);
+        ctx.drawImage(logoImg,p.x,p.y,lw,lh);
+      }
+      document.getElementById('dlBtn').disabled=false;
+      toast('Watermark applied!');
+    });
+
+    function getPos(pos,cw,ch,ww,wh,m){
+      const o={tl:{x:m,y:m},tr:{x:cw-ww-m,y:m},bl:{x:m,y:ch-wh-m},br:{x:cw-ww-m,y:ch-wh-m},center:{x:(cw-ww)/2,y:(ch-wh)/2}};
+      return [o[pos]||o.br];
+    }
+
+    document.getElementById('dlBtn').addEventListener('click',()=>{
+      canvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='watermarked.png';a.click();},'image/png');
+    });
+
+    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+  </script>
+</body>
+</html>

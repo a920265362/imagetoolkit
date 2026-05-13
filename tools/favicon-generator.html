@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Favicon Generator - Create Favicons Online Free | Image Toolkit</title>
+  <meta name="description" content="Generate favicon.ico and multiple sizes for your website from any image. Create 16x16, 32x32, 180x180, and 192x192 favicons instantly.">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/favicon-generator.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="webp-converter.html">Converter</a><a href="image-compressor.html">Compressor</a><a href="exif-viewer.html">EXIF</a><a href="color-palette.html">Palette</a><a href="image-to-base64.html">Base64</a></nav>
+    </div>
+  </header>
+  <main class="container tool-container">
+    <div class="tool-header"><h1>Favicon Generator</h1><p>Turn any image into a favicon for your website. Generates multiple sizes including 16×16, 32×32, 180×180, and 192×192.</p></div>
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_TOP_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+
+    <div class="drop-zone" id="dropZone"><div class="dz-icon">⭐</div><h3>Drop an image here to make it a favicon</h3><p>Square images work best. PNG/JPG/WebP supported.</p><input type="file" id="fileInput" accept="image/*"></div>
+
+    <div id="results" style="display:none;">
+      <div class="preview-area active"><h3 style="font-size:0.9rem;color:var(--text-light);margin-bottom:8px;">Original</h3><img id="previewImg" style="max-height:200px;"></div>
+      <h3 style="margin-top:24px;">Generated Favicons</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;" id="favicons"></div>
+      <div class="controls" style="margin-top:16px;">
+        <button class="btn btn-primary" id="dlAllBtn">Download All (ZIP-like)</button>
+        <button class="btn btn-secondary" id="clearBtn">Clear</button>
+      </div>
+      <div style="margin-top:24px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;">
+        <h4 style="margin-bottom:8px;">📋 HTML Code</h4>
+        <code id="htmlCode" style="font-size:0.8rem;color:var(--text);white-space:pre-wrap;display:block;"></code>
+        <button class="btn btn-sm btn-primary" id="copyCodeBtn" style="margin-top:8px;">Copy Code</button>
+      </div>
+    </div>
+
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_BOTTOM_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+  </main>
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+
+  <script>
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const results=document.getElementById('results'),previewImg=document.getElementById('previewImg');
+    const favicons=document.getElementById('favicons'),htmlCode=document.getElementById('htmlCode');
+    const sizes=[16,32,48,64,128,180,192];
+    let favBlobs={};
+
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])load(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',e=>{if(e.target.files[0])load(e.target.files[0]);});
+
+    async function load(f){
+      const url=URL.createObjectURL(f);previewImg.src=url;results.style.display='block';
+      const img=await createImageBitmap(f);favicons.innerHTML='';favBlobs={};
+      for(const s of sizes){
+        const c=document.createElement('canvas');c.width=s;c.height=s;
+        c.getContext('2d').drawImage(img,0,0,s,s);
+        const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+        favBlobs[s]=blob;
+        const u=URL.createObjectURL(blob);
+        favicons.innerHTML+=`<div style="text-align:center;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;">
+          <img src="${u}" width="${s}" height="${s}" style="display:block;border-radius:4px;image-rendering:pixelated;">
+          <span style="font-size:0.7rem;color:var(--text-light);">${s}×${s}</span>
+          <br><a href="#" onclick="dl('${u}','favicon-${s}x${s}.png');return false;" style="font-size:0.7rem;color:var(--primary);">Download</a>
+        </div>`;
+      }
+      htmlCode.textContent=`<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">\n<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">\n<link rel="apple-touch-icon" sizes="180x180" href="/favicon-180x180.png">\n<link rel="manifest" href="/site.webmanifest">`;
+    }
+
+    window.dl=function(u,n){const a=document.createElement('a');a.href=u;a.download=n;a.click();};
+
+    document.getElementById('dlAllBtn').addEventListener('click',()=>{for(const[s,b]of Object.entries(favBlobs)){const u=URL.createObjectURL(b);dl(u,`favicon-${s}x${s}.png`);}toast('Downloading all sizes...');});
+    document.getElementById('clearBtn').addEventListener('click',()=>{results.style.display='none';favBlobs={};fileInput.value='';});
+    document.getElementById('copyCodeBtn').addEventListener('click',()=>{navigator.clipboard.writeText(htmlCode.textContent).then(()=>toast('Copied!'));});
+
+    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+  </script>
+</body>
+</html>

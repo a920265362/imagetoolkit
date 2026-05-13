@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Images to PDF - Convert Images to PDF Online Free | Image Toolkit</title>
+  <meta name="description" content="Convert multiple images into a single PDF file. Supports JPG, PNG, WebP. Merge screenshots and photos into a PDF document.">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/images-to-pdf.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="webp-converter.html">Converter</a><a href="image-compressor.html">Compressor</a><a href="exif-viewer.html">EXIF</a><a href="color-palette.html">Palette</a><a href="image-to-base64.html">Base64</a></nav>
+    </div>
+  </header>
+  <main class="container tool-container">
+    <div class="tool-header"><h1>Images to PDF Converter</h1><p>Combine multiple images into a single PDF file. Perfect for merging screenshots, scanned documents, or photo collections.</p></div>
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_TOP_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+
+    <div class="drop-zone" id="dropZone"><div class="dz-icon">📄</div><h3>Drop images here or click to browse</h3><p>Supports JPG, PNG, WebP — select multiple images to combine</p><input type="file" id="fileInput" accept="image/*" multiple></div>
+
+    <div id="listArea" style="display:none;">
+      <div class="controls">
+        <label>Page size:</label>
+        <select id="pageSize"><option value="a4">A4</option><option value="letter">Letter</option><option value="fit" selected>Fit to image</option></select>
+        <label style="margin-left:12px;">Orientation:</label>
+        <select id="orientation"><option value="auto" selected>Auto</option><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select>
+      </div>
+      <div style="margin-top:12px;" id="fileList"></div>
+      <div class="controls" style="margin-top:12px;">
+        <button class="btn btn-primary" id="generateBtn">Generate PDF</button>
+        <button class="btn btn-success" id="dlPdfBtn" disabled>Download PDF</button>
+        <button class="btn btn-secondary" id="clearBtn">Clear</button>
+      </div>
+    </div>
+
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_BOTTOM_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+  </main>
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+
+  <script>
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const listArea=document.getElementById('listArea'),fileList=document.getElementById('fileList');
+    const pageSize=document.getElementById('pageSize'),orientation=document.getElementById('orientation');
+    let files=[],pdfBlob;
+
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');handleFiles(e.dataTransfer.files);});
+    fileInput.addEventListener('change',e=>handleFiles(e.target.files));
+
+    function handleFiles(fl){files=[...files,...fl].filter(f=>f.type.startsWith('image/'));if(!files.length)return;listArea.style.display='block';renderList();}
+
+    function renderList(){
+      fileList.innerHTML=files.map((f,i)=>`<div class="file-info" style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+        <span style="flex:1;">${i+1}. ${f.name}</span><span style="color:var(--text-light);font-size:0.8rem;">${formatSize(f.size)}</span>
+        <button class="btn btn-sm" style="background:var(--danger);color:white;padding:4px 10px;" onclick="removeFile(${i})">×</button>
+      </div>`).join('');
+    }
+
+    window.removeFile=function(i){files.splice(i,1);renderList();if(!files.length){listArea.style.display='none';document.getElementById('dlPdfBtn').disabled=true;}};
+
+    document.getElementById('generateBtn').addEventListener('click',async()=>{
+      if(!files.length)return;
+      const btn=document.getElementById('generateBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Generating...';
+      const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm'});
+
+      for(let i=0;i<files.length;i++){
+        if(i>0)doc.addPage();
+        const img=await createImageBitmap(files[i]);
+        const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+        c.getContext('2d').drawImage(img,0,0);
+        const dataUrl=c.toDataURL('image/jpeg',0.92);
+        const ps=pageSize.value;
+
+        if(ps==='fit'){
+          const w=doc.internal.pageSize.getWidth(),h=doc.internal.pageSize.getHeight();
+          const r=Math.min(w/img.width,h/img.height);
+          doc.addImage(dataUrl,'JPEG',(w-img.width*r)/2,(h-img.height*r)/2,img.width*r,img.height*r);
+        }else{
+          const ori=orientation.value==='auto'?(img.width>img.height?'landscape':'portrait'):orientation.value;
+          if(ori==='landscape')doc.internal.pageSize.setOrientation('landscape');
+          else doc.internal.pageSize.setOrientation('portrait');
+          const w=doc.internal.pageSize.getWidth()-20,h=doc.internal.pageSize.getHeight()-20;
+          const r=Math.min(w/img.width,h/img.height);
+          doc.addImage(dataUrl,'JPEG',10,10,img.width*r,img.height*r);
+        }
+      }
+
+      pdfBlob=doc.output('blob');
+      btn.innerHTML='Generate PDF';btn.disabled=false;
+      document.getElementById('dlPdfBtn').disabled=false;
+      toast('PDF generated!');
+    });
+
+    document.getElementById('dlPdfBtn').addEventListener('click',()=>{
+      if(!pdfBlob)return;const a=document.createElement('a');a.href=URL.createObjectURL(pdfBlob);a.download='images.pdf';a.click();
+    });
+
+    document.getElementById('clearBtn').addEventListener('click',()=>{files=[];pdfBlob=null;listArea.style.display='none';fileInput.value='';document.getElementById('dlPdfBtn').disabled=true;});
+
+    function formatSize(b){return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB';}
+    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+  </script>
+</body>
+</html>

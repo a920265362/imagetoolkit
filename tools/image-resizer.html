@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Resizer - Resize Images Online Free | Image Toolkit</title>
+  <meta name="description" content="Resize images by dimensions or percentage. Scale photos for social media, email, and web. Free online tool.">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/image-resizer.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="webp-converter.html">Converter</a><a href="image-compressor.html">Compressor</a><a href="exif-viewer.html">EXIF</a><a href="color-palette.html">Palette</a><a href="image-to-base64.html">Base64</a></nav>
+    </div>
+  </header>
+  <main class="container tool-container">
+    <div class="tool-header"><h1>Image Resizer</h1><p>Resize images by exact dimensions or percentage. Maintain aspect ratio or stretch freely.</p></div>
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_TOP_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+
+    <div class="drop-zone" id="dropZone"><div class="dz-icon">📐</div><h3>Drop an image here or click to browse</h3><p>Supports all image formats</p><input type="file" id="fileInput" accept="image/*"></div>
+
+    <div id="editor" style="display:none;">
+      <div class="preview-area active"><img id="previewImg" style="max-height:250px;"></div>
+      <div class="file-info"><div class="row"><span>Original size</span><span id="origSize"></span></div><div class="row"><span>Format</span><span id="infoFormat"></span></div></div>
+      <div class="controls" style="margin-top:16px;">
+        <label><input type="radio" name="mode" value="dimensions" checked> By Dimensions</label>
+        <label style="margin-left:16px;"><input type="radio" name="mode" value="percent"> By Percentage</label>
+        <label style="margin-left:16px;"><input type="checkbox" id="keepRatio" checked> Keep ratio</label>
+      </div>
+      <div class="controls" id="dimInputs">
+        <label>Width: <input type="number" id="width" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:6px;" min="1"></label>
+        <label>Height: <input type="number" id="height" style="width:80px;padding:6px;border:1px solid var(--border);border-radius:6px;" min="1"></label>
+        <span style="font-size:0.8rem;color:var(--text-light);">px</span>
+      </div>
+      <div class="controls" id="pctInputs" style="display:none;">
+        <label>Scale: <input type="range" id="percent" min="10" max="200" value="100" style="width:200px;"> <span id="pctVal">100</span>%</label>
+      </div>
+      <div class="controls" style="margin-top:12px;">
+        <button class="btn btn-primary" id="resizeBtn">Resize & Download</button>
+        <button class="btn btn-secondary" id="clearBtn">Clear</button>
+      </div>
+    </div>
+
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_BOTTOM_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+  </main>
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+
+  <script>
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const editor=document.getElementById('editor'),previewImg=document.getElementById('previewImg');
+    const keepRatio=document.getElementById('keepRatio'),wInp=document.getElementById('width'),hInp=document.getElementById('height');
+    const pctInp=document.getElementById('percent'),pctVal=document.getElementById('pctVal');
+    let origFile,origW,origH;
+
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])load(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',e=>{if(e.target.files[0])load(e.target.files[0]);});
+
+    document.querySelectorAll('input[name="mode"]').forEach(r=>r.addEventListener('change',()=>{
+      document.getElementById('dimInputs').style.display=r.value==='dimensions'?'flex':'none';
+      document.getElementById('pctInputs').style.display=r.value==='percent'?'flex':'none';
+    }));
+
+    pctInp.addEventListener('input',()=>pctVal.textContent=pctInp.value);
+    keepRatio.addEventListener('change',()=>{if(keepRatio.checked&&origW){hInp.value=Math.round(wInp.value*origH/origW);}});
+    wInp.addEventListener('input',()=>{if(keepRatio.checked&&origW)hInp.value=Math.round(wInp.value*origH/origW);});
+    hInp.addEventListener('input',()=>{if(keepRatio.checked&&origW)wInp.value=Math.round(hInp.value*origW/origH);});
+
+    function load(f){
+      origFile=f;const url=URL.createObjectURL(f);previewImg.src=url;
+      const img=new Image();img.onload=()=>{origW=img.width;origH=img.height;wInp.value=origW;hInp.value=origH;document.getElementById('origSize').textContent=`${origW} × ${origH}`;document.getElementById('infoFormat').textContent=f.type||'unknown';editor.style.display='block';};img.src=url;
+    }
+
+    document.getElementById('resizeBtn').addEventListener('click',async()=>{
+      if(!origFile)return;
+      const mode=document.querySelector('input[name="mode"]:checked').value;
+      let nw,nh;
+      if(mode==='percent'){const p=pctInp.value/100;nw=Math.round(origW*p);nh=Math.round(origH*p);}
+      else{nw=parseInt(wInp.value);nh=parseInt(hInp.value);}
+      const img=await createImageBitmap(origFile);
+      const c=document.createElement('canvas');c.width=nw;c.height=nh;
+      c.getContext('2d').drawImage(img,0,0,nw,nh);
+      c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='resized-'+origFile.name;a.click();toast('Resized!');},origFile.type||'image/png');
+    });
+
+    document.getElementById('clearBtn').addEventListener('click',()=>{origFile=null;editor.style.display='none';fileInput.value='';previewImg.src='';});
+
+    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+  </script>
+</body>
+</html>

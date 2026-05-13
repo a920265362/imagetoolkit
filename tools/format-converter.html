@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Universal Image Format Converter - PNG JPG WebP SVG | Image Toolkit</title>
+  <meta name="description" content="Convert images between PNG, JPG, WebP, and BMP formats. Batch convert multiple images at once. Free online format converter.">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/format-converter.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="webp-converter.html">Converter</a><a href="image-compressor.html">Compressor</a><a href="exif-viewer.html">EXIF</a><a href="color-palette.html">Palette</a><a href="image-to-base64.html">Base64</a></nav>
+    </div>
+  </header>
+  <main class="container tool-container">
+    <div class="tool-header"><h1>Universal Image Format Converter</h1><p>Convert images between PNG, JPG, WebP, and BMP. Batch convert multiple files at once. All processing in your browser.</p></div>
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_TOP_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+
+    <div class="drop-zone" id="dropZone"><div class="dz-icon">🖼️↔️</div><h3>Drop images here or click to browse</h3><p>PNG, JPG, WebP, BMP — convert to any format</p><input type="file" id="fileInput" accept="image/*" multiple></div>
+
+    <div class="controls" id="fmtControls" style="display:none;">
+      <label>Convert to:</label>
+      <select id="outFormat"><option value="image/png">PNG</option><option value="image/jpeg">JPG (90%)</option><option value="image/webp">WebP</option><option value="image/bmp">BMP</option></select>
+      <button class="btn btn-primary" id="convertBtn">Convert All</button>
+      <button class="btn btn-secondary" id="clearBtn">Clear</button>
+    </div>
+    <div id="results" style="margin-top:24px;"></div>
+
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_BOTTOM_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+  </main>
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+
+  <script>
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const fmtControls=document.getElementById('fmtControls'),outFormat=document.getElementById('outFormat');
+    const results=document.getElementById('results');
+    let files=[];
+
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');handleFiles(e.dataTransfer.files);});
+    fileInput.addEventListener('change',e=>handleFiles(e.target.files));
+
+    function handleFiles(fl){files=[...fl].filter(f=>f.type.startsWith('image/'));if(!files.length){toast('No image files selected.');return;}fmtControls.style.display='flex';renderList();}
+
+    function renderList(){
+      results.innerHTML=files.map((f,i)=>`<div class="file-info" style="display:flex;align-items:center;gap:16px;"><span style="flex:1;font-weight:500;">${f.name}</span><span style="color:var(--text-light);font-size:0.85rem;">${formatSize(f.size)}</span><span class="spinner" id="spin-${i}" style="display:none;"></span><button class="btn btn-success btn-sm" id="dl-${i}" disabled>Convert</button></div>`).join('');
+      files.forEach((_,i)=>document.getElementById(`dl-${i}`).disabled=false);
+    }
+
+    document.getElementById('convertBtn').addEventListener('click',async()=>{
+      const fmt=outFormat.value;const extMap={'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/bmp':'bmp'};const ext=extMap[fmt];
+      for(let i=0;i<files.length;i++){
+        const btn=document.getElementById(`dl-${i}`),spin=document.getElementById(`spin-${i}`);
+        btn.style.display='none';spin.style.display='inline-block';
+        try{
+          const img=await createImageBitmap(files[i]);
+          const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+          c.getContext('2d').drawImage(img,0,0);
+          const blob=await new Promise(r=>c.toBlob(r,fmt,0.9));
+          spin.style.display='none';btn.style.display='inline-block';
+          btn.textContent=`Download ${ext.toUpperCase()}`;btn.disabled=false;
+          const url=URL.createObjectURL(blob);
+          btn.onclick=()=>{const a=document.createElement('a');a.href=url;a.download=files[i].name.replace(/\.[^.]+$/,'.'+ext);a.click();};
+        }catch(e){spin.style.display='none';btn.style.display='inline-block';btn.textContent='Error';btn.className='btn btn-sm';btn.style.background='var(--danger)';btn.style.color='white';}
+      }
+      toast(`Converted ${files.length} image(s)!`);
+    });
+
+    document.getElementById('clearBtn').addEventListener('click',()=>{files=[];results.innerHTML='';fmtControls.style.display='none';fileInput.value='';});
+
+    function formatSize(b){return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB';}
+    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+  </script>
+</body>
+</html>

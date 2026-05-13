@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Cropper - Crop Images Online Free | Image Toolkit</title>
+  <meta name="description" content="Crop images online with preset ratios: 1:1, 16:9, 4:3, 3:2, and freeform. Perfect for social media, avatars, and thumbnails. All in your browser.">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/image-cropper.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo">
+        <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit
+      </a>
+      <nav>
+        <a href="../index.html">Home</a>
+        <a href="webp-converter.html">Converter</a>
+        <a href="image-compressor.html">Compressor</a>
+        <a href="exif-viewer.html">EXIF</a>
+        <a href="color-palette.html">Palette</a>
+        <a href="image-to-base64.html">Base64</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container tool-container">
+    <div class="tool-header">
+      <h1>Image Cropper</h1>
+      <p>Crop images with preset aspect ratios or freeform. Download instantly.</p>
+    </div>
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_TOP_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="dz-icon">✂️</div>
+      <h3>Drop an image here or click to browse</h3>
+      <p>Supports all image formats</p>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div id="editor" style="display:none;">
+      <div class="controls" style="margin-bottom:16px;">
+        <label>Aspect ratio:</label>
+        <select id="ratio">
+          <option value="free">Freeform</option>
+          <option value="1:1">1:1 (Square)</option>
+          <option value="16:9">16:9 (Video)</option>
+          <option value="4:3">4:3 (Photo)</option>
+          <option value="3:2">3:2 (Classic)</option>
+          <option value="9:16">9:16 (Story)</option>
+          <option value="2:1">2:1 (Panorama)</option>
+        </select>
+        <button class="btn btn-primary" id="cropBtn">Crop & Download</button>
+        <button class="btn btn-secondary" id="resetBtn">Reset</button>
+      </div>
+      <div style="position:relative;display:inline-block;max-width:100%;overflow:hidden;" id="cropContainer">
+        <img id="image" style="max-width:100%;display:block;">
+        <div id="cropBox" style="position:absolute;border:2px dashed #fff;box-shadow:0 0 0 9999px rgba(0,0,0,0.5);cursor:move;display:none;"></div>
+      </div>
+    </div>
+
+    <div class="ad-placeholder"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-YOUR_ADSENSE_ID" data-ad-slot="TOOL_BOTTOM_SLOT" data-ad-format="auto"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+  </main>
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+
+  <script>
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const editor=document.getElementById('editor'),image=document.getElementById('image');
+    const cropBox=document.getElementById('cropBox'),ratioSel=document.getElementById('ratio');
+    const cropBtn=document.getElementById('cropBtn'),resetBtn=document.getElementById('resetBtn');
+    let isDragging=false,startX,startY,boxX=0,boxY=0,boxW=200,boxH=200;
+
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',e=>{if(e.target.files[0])loadFile(e.target.files[0]);});
+
+    function loadFile(file){
+      const url=URL.createObjectURL(file);image.src=url;
+      image.onload=()=>{
+        editor.style.display='block';
+        const mw=Math.min(image.naturalWidth,800),s=mw/image.naturalWidth;
+        image.style.width=mw+'px';
+        boxW=Math.min(300,mw*0.5);boxH=boxW;
+        boxX=(mw-boxW)/2;boxY=0;
+        updateCropBox();
+        applyRatio();
+      };
+    }
+
+    ratioSel.addEventListener('change',applyRatio);
+    function applyRatio(){
+      const v=ratioSel.value;
+      if(v==='free')return;
+      const[p]=v.split(':').map(Number);const r=p;
+      if(v==='16:9'){boxH=boxW*9/16;}else if(v==='9:16'){boxH=boxW*16/9;}
+      else if(v==='4:3'){boxH=boxW*3/4;}
+      else if(v==='3:2'){boxH=boxW*2/3;}
+      else if(v==='2:1'){boxH=boxW*0.5;}
+      else{boxH=boxW;}
+      updateCropBox();
+    }
+
+    function updateCropBox(){
+      cropBox.style.display='block';
+      cropBox.style.left=boxX+'px';cropBox.style.top=boxY+'px';
+      cropBox.style.width=boxW+'px';cropBox.style.height=boxH+'px';
+    }
+
+    cropBox.addEventListener('mousedown',e=>{isDragging=true;startX=e.clientX-boxX;startY=e.clientY-boxY;cropBox.style.cursor='grabbing';});
+    document.addEventListener('mousemove',e=>{
+      if(!isDragging)return;
+      const rect=image.getBoundingClientRect();
+      boxX=Math.max(0,Math.min(e.clientX-startX,rect.width-boxW));
+      boxY=Math.max(0,Math.min(e.clientY-startY,rect.height-boxH));
+      updateCropBox();
+    });
+    document.addEventListener('mouseup',()=>{isDragging=false;cropBox.style.cursor='move';});
+
+    cropBtn.addEventListener('click',()=>{
+      const canvas=document.createElement('canvas');
+      const scale=image.naturalWidth/image.width;
+      canvas.width=boxW*scale;canvas.height=boxH*scale;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(image,boxX*scale,boxY*scale,canvas.width,canvas.height,0,0,canvas.width,canvas.height);
+      canvas.toBlob(b=>{
+        const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='cropped-image.png';a.click();
+        toast('Cropped image downloaded!');
+      },'image/png');
+    });
+
+    resetBtn.addEventListener('click',()=>{
+      boxX=0;boxY=0;boxW=200;boxH=200;updateCropBox();applyRatio();
+    });
+
+    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+  </script>
+</body>
+</html>
