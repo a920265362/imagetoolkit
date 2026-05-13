@@ -154,7 +154,7 @@
       compressedImg.src = url;
 
       const pct = ((1 - compressedBlob.size / originalFile.size) * 100).toFixed(1);
-      sizeInfo.textContent = `${formatSize(originalFile.size)} â†’ ${formatSize(compressedBlob.size)} (${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`;
+      sizeInfo.textContent = `${formatSize(originalFile.size)} â†?${formatSize(compressedBlob.size)} (${pct > 0 ? '-' + pct : '+' + Math.abs(pct)}%)`;
 
       compressBtn.innerHTML = 'Compress';
       compressBtn.disabled = false;
@@ -197,3 +197,4 @@
   </script>
 </body>
 </html>
+
