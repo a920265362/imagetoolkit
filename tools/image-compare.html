@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Before After Image Comparison Slider | Image Toolkit</title>
+  <meta name="description" content="Compare two images side by side with a draggable slider. Perfect for showing before/after edits, product comparisons, or photo transformations.">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/image-compare.html">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="background-remover.html">AI BG</a><a href="format-converter.html">Convert</a><a href="image-compressor.html">Compress</a><a href="image-cropper.html">Crop</a></nav>
+    </div>
+  </header>
+  <main class="container tool-container">
+    <div class="tool-header"><h1>↔️ Before/After Comparison Slider</h1><p>Upload two images and compare them with a draggable slider. Perfect for showing photo edits, transformations, or product comparisons.</p></div>
+
+    <div id="uploadArea" style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div class="drop-zone" id="dzBefore" style="flex:1;min-width:250px;"><div class="dz-icon">📷</div><h3>Before Image</h3><p>Drop or click to upload</p><input type="file" id="fileBefore" accept="image/*"></div>
+      <div class="drop-zone" id="dzAfter" style="flex:1;min-width:250px;"><div class="dz-icon">✨</div><h3>After Image</h3><p>Drop or click to upload</p><input type="file" id="fileAfter" accept="image/*"></div>
+    </div>
+
+    <div id="compareArea" style="display:none;position:relative;overflow:hidden;border-radius:var(--radius);max-width:700px;margin:0 auto;">
+      <canvas id="canvasAfter" style="display:block;width:100%;"></canvas>
+      <div id="clipWrap" style="position:absolute;top:0;left:0;width:50%;height:100%;overflow:hidden;">
+        <canvas id="canvasBefore" style="display:block;width:100%;"></canvas>
+      </div>
+      <div id="slider" style="position:absolute;top:0;left:50%;width:3px;height:100%;background:white;box-shadow:0 0 8px rgba(0,0,0,0.3);cursor:ew-resize;transform:translateX(-50%);">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;background:white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">↔</div>
+      </div>
+      <div class="controls" style="margin-top:12px;"><button class="btn btn-success" id="dlCompareBtn">Download Comparison</button><button class="btn btn-secondary" id="clearCompareBtn">Clear</button></div>
+    </div>
+  </main>
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+  <script>
+    const canvasA=document.getElementById('canvasAfter'),canvasB=document.getElementById('canvasBefore');
+    const ctxA=canvasA.getContext('2d'),ctxB=canvasB.getContext('2d');
+    const clipWrap=document.getElementById('clipWrap'),slider=document.getElementById('slider');
+    const compareArea=document.getElementById('compareArea');
+    let imgBefore,imgAfter,isDragging=false;
+
+    function setupDrop(id,fileId,isBefore){
+      const dz=document.getElementById(id),fi=document.getElementById(fileId);
+      dz.addEventListener('click',()=>fi.click());
+      dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+      dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+      dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer.files[0])loadImage(e.dataTransfer.files[0],isBefore);});
+      fi.addEventListener('change',e=>{if(e.target.files[0])loadImage(e.target.files[0],isBefore);});
+    }
+
+    setupDrop('dzBefore','fileBefore',true);
+    setupDrop('dzAfter','fileAfter',false);
+
+    function loadImage(f,isBefore){
+      const u=URL.createObjectURL(f);const img=new Image();
+      img.onload=()=>{
+        if(isBefore){imgBefore=img;drawBefore();}else{imgAfter=img;drawAfter();}
+        if(imgBefore&&imgAfter){compareArea.style.display='block';document.getElementById('uploadArea').style.display='none';}
+      };img.src=u;
+    }
+
+    function syncSize(){
+      if(!imgBefore||!imgAfter)return;
+      const mw=700,w=Math.min(mw,imgBefore.width,imgAfter.width);
+      const h=Math.min(imgBefore.height*w/imgBefore.width,imgAfter.height*w/imgAfter.width);
+      canvasA.width=canvasB.width=w;canvasA.height=canvasB.height=h;
+      canvasA.style.width=canvasB.style.width=w+'px';
+    }
+
+    function drawAfter(){if(!imgAfter)return;syncSize();ctxA.clearRect(0,0,canvasA.width,canvasA.height);ctxA.drawImage(imgAfter,0,0,canvasA.width,canvasA.height);}
+    function drawBefore(){if(!imgBefore)return;syncSize();ctxB.clearRect(0,0,canvasB.width,canvasB.height);ctxB.drawImage(imgBefore,0,0,canvasB.width,canvasB.height);}
+
+    slider.addEventListener('mousedown',e=>{e.preventDefault();isDragging=true;});
+    document.addEventListener('mousemove',e=>{
+      if(!isDragging||!compareArea.style.display)return;
+      const r=canvasA.getBoundingClientRect();
+      const pct=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100));
+      clipWrap.style.width=pct+'%';slider.style.left=pct+'%';
+    });
+    document.addEventListener('mouseup',()=>{isDragging=false;});
+    slider.addEventListener('touchstart',e=>{e.preventDefault();isDragging=true;});
+    document.addEventListener('touchmove',e=>{
+      if(!isDragging)return;
+      const r=canvasA.getBoundingClientRect();
+      const pct=Math.max(0,Math.min(100,(e.touches[0].clientX-r.left)/r.width*100));
+      clipWrap.style.width=pct+'%';slider.style.left=pct+'%';
+    });
+    document.addEventListener('touchend',()=>{isDragging=false;});
+
+    document.getElementById('dlCompareBtn').addEventListener('click',()=>{
+      const c=document.createElement('canvas');c.width=canvasA.width;c.height=canvasA.height;
+      const ctx=c.getContext('2d');ctx.drawImage(canvasA,0,0);ctx.drawImage(canvasB,0,0,canvasB.width*parseInt(clipWrap.style.width)/100,canvasB.height,0,0,canvasB.width*parseInt(clipWrap.style.width)/100,canvasB.height);
+      c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='comparison.png';a.click();},'image/png');
+    });
+
+    document.getElementById('clearCompareBtn').addEventListener('click',()=>{imgBefore=null;imgAfter=null;compareArea.style.display='none';document.getElementById('uploadArea').style.display='flex';document.getElementById('fileBefore').value='';document.getElementById('fileAfter').value='';clipWrap.style.width='50%';slider.style.left='50%';});
+  </script>
+</body>
+</html>

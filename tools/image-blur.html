@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Blur & Mosaic Tool - Blur Faces, Text, Sensitive Info | Image Toolkit</title>
+  <meta name="description" content="Blur or pixelate parts of an image. Perfect for hiding faces, license plates, or sensitive text before sharing.">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/image-blur.html">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="background-remover.html">AI BG</a><a href="format-converter.html">Convert</a><a href="image-compressor.html">Compress</a><a href="image-cropper.html">Crop</a></nav>
+    </div>
+  </header>
+  <main class="container tool-container">
+    <div class="tool-header"><h1>🔍 Image Blur & Mosaic Tool</h1><p>Draw rectangles over sensitive areas to blur or pixelate them. Perfect for hiding faces, text, or private information.</p></div>
+
+    <div class="drop-zone" id="dropZone"><div class="dz-icon">🔍</div><h3>Drop an image here or click to browse</h3><p>Click and drag on the image to create blur zones</p><input type="file" id="fileInput" accept="image/*"></div>
+
+    <div id="editor" style="display:none;">
+      <div class="controls">
+        <label>Blur type:</label>
+        <button class="btn btn-sm" id="blurType" style="background:var(--primary);color:white;">Gaussian Blur</button>
+        <button class="btn btn-sm btn-secondary" id="mosaicType">Mosaic (Pixelate)</button>
+        <label style="margin-left:12px;">Strength: <input type="range" id="strength" min="5" max="50" value="20"></label>
+        <button class="btn btn-sm" style="background:var(--danger);color:white;" id="undoBtn">Undo</button>
+      </div>
+      <div style="position:relative;display:inline-block;cursor:crosshair;" id="drawArea">
+        <canvas id="canvas" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);"></canvas>
+      </div>
+      <div class="controls"><button class="btn btn-success" id="dlBtn">Download</button><button class="btn btn-secondary" id="clearBtn">Clear</button></div>
+    </div>
+  </main>
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+  <script>
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const editor=document.getElementById('editor'),canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+    const blurBtn=document.getElementById('blurType'),mosaicBtn=document.getElementById('mosaicType');
+    let img,zones=[],drawing=false,sx,sy,mode='blur';
+
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])load(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',e=>{if(e.target.files[0])load(e.target.files[0]);});
+
+    blurBtn.addEventListener('click',()=>{mode='blur';blurBtn.style.background='var(--primary)';blurBtn.style.color='white';blurBtn.className='btn btn-sm';mosaicBtn.className='btn btn-sm btn-secondary';mosaicBtn.style.background='';mosaicBtn.style.color='';});
+    mosaicBtn.addEventListener('click',()=>{mode='mosaic';mosaicBtn.style.background='var(--primary)';mosaicBtn.style.color='white';mosaicBtn.className='btn btn-sm';blurBtn.className='btn btn-sm btn-secondary';blurBtn.style.background='';blurBtn.style.color='';});
+
+    function load(f){const u=URL.createObjectURL(f);img=new Image();img.onload=()=>{const mw=Math.min(img.width,800),r=mw/img.width;canvas.width=mw;canvas.height=Math.round(img.height*r);canvas.style.width=mw+'px';zones=[];draw();editor.style.display='block';};img.src=u;}
+
+    canvas.addEventListener('mousedown',e=>{drawing=true;const r=canvas.getBoundingClientRect();sx=(e.clientX-r.left)*canvas.width/canvas.offsetWidth;sy=(e.clientY-r.top)*canvas.height/canvas.offsetHeight;});
+    canvas.addEventListener('mousemove',e=>{if(!drawing)return;draw();const r=canvas.getBoundingClientRect();const ex=(e.clientX-r.left)*canvas.width/canvas.offsetWidth,ey=(e.clientY-r.top)*canvas.height/canvas.offsetHeight;ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.setLineDash([6]);ctx.strokeRect(sx,sy,ex-sx,ey-sy);ctx.setLineDash([]);});
+    canvas.addEventListener('mouseup',e=>{if(!drawing)return;drawing=false;const r=canvas.getBoundingClientRect();const ex=(e.clientX-r.left)*canvas.width/canvas.offsetWidth,ey=(e.clientY-r.top)*canvas.height/canvas.offsetHeight;zones.push({x:Math.min(sx,ex),y:Math.min(sy,ey),w:Math.abs(ex-sx),h:Math.abs(ey-sy)});draw();applyZones();});
+
+    function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);}
+    function applyZones(){draw();const s=parseInt(document.getElementById('strength').value);zones.forEach(z=>{if(mode==='blur'){ctx.filter=`blur(${s}px)`;ctx.drawImage(canvas,z.x,z.y,z.w,z.h,z.x,z.y,z.w,z.h);ctx.filter='none';}else{const d=ctx.getImageData(z.x,z.y,z.w,z.h);pixelate(d,s);ctx.putImageData(d,z.x,z.y);}});}
+
+    function pixelate(d,s){const size=Math.max(2,s/2);for(let y=0;y<d.height;y+=size){for(let x=0;x<d.width;x+=size){let r=0,g=0,b=0,c=0;for(let dy=0;dy<size&&y+dy<d.height;dy++){for(let dx=0;dx<size&&x+dx<d.width;dx++){const i=((y+dy)*d.width+(x+dx))*4;r+=d.data[i];g+=d.data[i+1];b+=d.data[i+2];c++;}}r/=c;g/=c;b/=c;for(let dy=0;dy<size&&y+dy<d.height;dy++){for(let dx=0;dx<size&&x+dx<d.width;dx++){const i=((y+dy)*d.width+(x+dx))*4;d.data[i]=r;d.data[i+1]=g;d.data[i+2]=b;}}}}}
+
+    document.getElementById('strength').addEventListener('input',applyZones);
+    document.getElementById('undoBtn').addEventListener('click',()=>{zones.pop();applyZones();});
+    document.getElementById('dlBtn').addEventListener('click',()=>{canvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='blurred.png';a.click();},'image/png');});
+    document.getElementById('clearBtn').addEventListener('click',()=>{img=null;zones=[];editor.style.display='none';fileInput.value='';});
+  </script>
+</body>
+</html>

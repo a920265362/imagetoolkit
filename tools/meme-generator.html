@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meme Generator - Create Memes Online Free | Image Toolkit</title>
+  <meta name="description" content="Create custom memes online. Add top and bottom text to any image. Free meme maker, no watermark.">
+  <link rel="canonical" href="https://imagetoolkit.com/tools/meme-generator.html">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="background-remover.html">AI BG</a><a href="format-converter.html">Convert</a><a href="image-compressor.html">Compress</a><a href="image-cropper.html">Crop</a></nav>
+    </div>
+  </header>
+  <main class="container tool-container">
+    <div class="tool-header"><h1>😂 Meme Generator</h1><p>Create custom memes with top and bottom text. Upload any image, type your text, and download instantly.</p></div>
+
+    <div class="drop-zone" id="dropZone"><div class="dz-icon">😂</div><h3>Drop an image or click to browse</h3><p>Use your own photos, screenshots, or templates</p><input type="file" id="fileInput" accept="image/*"></div>
+
+    <div id="editor" style="display:none;">
+      <canvas id="canvas" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);display:block;margin:0 auto;"></canvas>
+      <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;max-width:500px;">
+        <label style="font-weight:600;">Top Text:</label>
+        <input type="text" id="topText" placeholder="When you realize..." style="padding:10px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:Impact,sans-serif;text-transform:uppercase;">
+        <label style="font-weight:600;">Bottom Text:</label>
+        <input type="text" id="bottomText" placeholder="IT'S ALL FRONTEND" style="padding:10px;border:1px solid var(--border);border-radius:8px;font-size:1rem;font-family:Impact,sans-serif;text-transform:uppercase;">
+      </div>
+      <div class="controls">
+        <label>Font Size: <input type="range" id="fontSize" min="20" max="80" value="40"></label>
+        <label>Stroke: <input type="checkbox" id="stroke" checked></label>
+      </div>
+      <div class="controls"><button class="btn btn-primary" id="generateBtn">Generate Meme</button><button class="btn btn-success" id="dlBtn">Download</button><button class="btn btn-secondary" id="clearBtn">Clear</button></div>
+    </div>
+  </main>
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+  <script>
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const editor=document.getElementById('editor'),canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+    let origImg;
+
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])load(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',e=>{if(e.target.files[0])load(e.target.files[0]);});
+
+    function load(f){const u=URL.createObjectURL(f);origImg=new Image();origImg.onload=()=>{editor.style.display='block';document.getElementById('generateBtn').click();};origImg.src=u;}
+
+    document.getElementById('generateBtn').addEventListener('click',()=>{
+      if(!origImg)return;
+      const mw=600,r=mw/origImg.width;
+      canvas.width=mw;canvas.height=origImg.height*r;
+      ctx.drawImage(origImg,0,0,canvas.width,canvas.height);
+      const topT=document.getElementById('topText').value;
+      const bottomT=document.getElementById('bottomText').value;
+      const fs=document.getElementById('fontSize').value;
+      const useStroke=document.getElementById('stroke').checked;
+      ctx.font=`bold ${fs}px Impact, sans-serif`;
+      ctx.textAlign='center';ctx.fillStyle='white';
+      const lh=fs*1.1;
+      if(useStroke){ctx.strokeStyle='black';ctx.lineWidth=fs/8;}
+      function draw(t,y){
+        if(!t)return;
+        const words=t.toUpperCase().split(' ');
+        let line='',lines=[];
+        for(const w of words){
+          const test=line?line+' '+w:w;
+          if(ctx.measureText(test).width>canvas.width-20){lines.push(line);line=w;}
+          else{line=test;}
+        }
+        lines.push(line);
+        lines.forEach((l,i)=>{
+          const ly=y+i*lh;
+          if(useStroke)ctx.strokeText(l,canvas.width/2,ly);
+          ctx.fillText(l,canvas.width/2,ly);
+        });
+      }
+      if(topT)draw(topT,fs+10);
+      if(bottomT)draw(bottomT,canvas.height-10-(bottomT.toUpperCase().split(' ').length*lh));
+    });
+
+    document.getElementById('dlBtn').addEventListener('click',()=>{canvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='meme.png';a.click();},'image/png');});
+    document.getElementById('clearBtn').addEventListener('click',()=>{origImg=null;editor.style.display='none';fileInput.value='';});
+  </script>
+</body>
+</html>
