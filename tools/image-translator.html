@@ -116,15 +116,17 @@
 
     function loadImage(file){
       const url=URL.createObjectURL(file);
-      mainImg.src=url;
       mainImg.onload=()=>{
         origImage=mainImg;
-        displayScale=mainImg.naturalWidth/mainImg.clientWidth;
+        const cw=mainImg.clientWidth||mainImg.naturalWidth;
+        displayScale=cw>0?mainImg.naturalWidth/cw:1;
         editor.style.display='block';
         zones=[];nextId=1;
         renderZones();renderZoneList();
         setMode('mark');
       };
+      mainImg.onerror=()=>{toast('Failed to load image. Try another file.');};
+      mainImg.src=url;
     }
 
     // Mode switching
