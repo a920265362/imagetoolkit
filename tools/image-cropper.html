@@ -114,21 +114,50 @@
 
       <!-- === SPLIT TAB === -->
       <div class="tab-panel" id="panel-split">
-        <div class="controls" style="margin-bottom:16px;flex-wrap:wrap;">
-          <label style="font-weight:600;">Split mode:</label>
-          <select id="splitMode">
-            <option value="parts">By number of parts</option>
-            <option value="height">By pixel height</option>
-          </select>
-          <label id="splitLabel" style="margin-left:8px;">Parts:</label>
-          <input type="number" id="splitValue" min="2" max="20" value="3" style="width:70px;">
+        <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:16px;">Set target dimensions for each slice. The long image will be scaled to fit the width, then split vertically.</p>
+        <div class="controls" style="margin-bottom:12px;flex-wrap:wrap;gap:16px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label style="font-weight:600;white-space:nowrap;">Target Width:</label>
+            <input type="number" id="splitWidth" min="100" max="10000" value="1080" style="width:80px;">
+            <span style="color:var(--text-light);font-size:0.8rem;">px</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label style="font-weight:600;white-space:nowrap;">Target Height:</label>
+            <input type="number" id="splitHeight" min="100" max="20000" value="1920" style="width:80px;">
+            <span style="color:var(--text-light);font-size:0.8rem;">px per slice</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label style="font-weight:600;white-space:nowrap;">Fit:</label>
+            <select id="splitFit">
+              <option value="width">Scale to width</option>
+              <option value="contain">Contain (show all)</option>
+              <option value="cover">Cover (fill, may crop)</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label style="font-weight:600;white-space:nowrap;">Last slice:</label>
+            <select id="splitLast">
+              <option value="shorter">Keep as-is</option>
+              <option value="pad">Pad to target height</option>
+              <option value="stretch">Stretch to fit</option>
+            </select>
+          </div>
         </div>
+
+        <div class="controls" style="margin-bottom:8px;">
+          <button class="btn btn-sm btn-secondary" id="splitPresetIG">IG Story (1080x1920)</button>
+          <button class="btn btn-sm btn-secondary" id="splitPresetPost">IG Post (1080x1350)</button>
+          <button class="btn btn-sm btn-secondary" id="splitPresetTweet">Twitter (1200x675)</button>
+          <button class="btn btn-sm btn-secondary" id="splitPresetA4">A4 Print (2480x3508)</button>
+        </div>
+
+        <div id="splitSummary" style="font-size:0.85rem;color:var(--text-light);margin-bottom:12px;"></div>
 
         <div id="splitPreview" class="split-preview"></div>
 
         <div class="controls" style="margin-top:16px;">
-          <button class="btn btn-primary" id="splitBtn">&#x1F4E5; Download All Parts</button>
-          <button class="btn btn-secondary" id="downloadSingleBtns" style="display:none;"></button>
+          <button class="btn btn-primary" id="splitBtn">&#x1F4E5; Download All Slices</button>
+          <button class="btn btn-secondary" id="splitPreviewBtn">&#x1F504; Refresh Preview</button>
         </div>
       </div>
 
@@ -463,40 +492,53 @@
     });
 
     // ============ SPLIT MODE ============
-    const splitMode = document.getElementById('splitMode');
-    const splitValue = document.getElementById('splitValue');
-    const splitLabel = document.getElementById('splitLabel');
+    const splitWidth = document.getElementById('splitWidth');
+    const splitHeight = document.getElementById('splitHeight');
+    const splitFit = document.getElementById('splitFit');
+    const splitLast = document.getElementById('splitLast');
     const splitPreview = document.getElementById('splitPreview');
+    const splitSummary = document.getElementById('splitSummary');
     const splitBtn = document.getElementById('splitBtn');
+    const splitPreviewBtn = document.getElementById('splitPreviewBtn');
     let splitImage = null;
+    let splitPartsCache = null;
 
-    splitMode.addEventListener('change', () => {
-      if (splitMode.value === 'parts') {
-        splitLabel.textContent = 'Parts:';
-        splitValue.min = 2; splitValue.max = 20;
-        splitValue.value = 3;
-      } else {
-        splitLabel.textContent = 'Height (px):';
-        splitValue.min = 100; splitValue.max = 10000;
-        splitValue.value = 1080;
-      }
+    // Event listeners
+    [splitWidth, splitHeight, splitFit, splitLast].forEach(el => {
+      el.addEventListener('input', () => { if (splitImage) renderSplitPreview(); });
+      el.addEventListener('change', () => { if (splitImage) renderSplitPreview(); });
+    });
+
+    // Presets
+    document.getElementById('splitPresetIG').addEventListener('click', () => {
+      splitWidth.value = 1080; splitHeight.value = 1920; splitFit.value = 'width';
+      if (splitImage) renderSplitPreview();
+    });
+    document.getElementById('splitPresetPost').addEventListener('click', () => {
+      splitWidth.value = 1080; splitHeight.value = 1350; splitFit.value = 'width';
+      if (splitImage) renderSplitPreview();
+    });
+    document.getElementById('splitPresetTweet').addEventListener('click', () => {
+      splitWidth.value = 1200; splitHeight.value = 675; splitFit.value = 'cover';
+      if (splitImage) renderSplitPreview();
+    });
+    document.getElementById('splitPresetA4').addEventListener('click', () => {
+      splitWidth.value = 2480; splitHeight.value = 3508; splitFit.value = 'width';
       if (splitImage) renderSplitPreview();
     });
 
-    splitValue.addEventListener('input', () => { if (splitImage) renderSplitPreview(); });
+    splitPreviewBtn.addEventListener('click', () => { if (splitImage) renderSplitPreview(); });
 
     function splitLoadImage(file) {
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
         splitImage = img;
-        // Auto-detect: if image is very tall (aspect ratio > 2), suggest split
+        // Auto-detect tall images and suggest dimensions
         if (img.naturalHeight / img.naturalWidth > 2) {
-          splitMode.value = 'height';
-          splitLabel.textContent = 'Height (px):';
-          splitValue.min = 100; splitValue.max = 10000;
-          splitValue.value = Math.round(img.naturalWidth * 16 / 9) || 1080;
-          splitPreview.parentElement.parentElement.style.display = 'block';
+          const ratio = img.naturalWidth / img.naturalHeight;
+          splitWidth.value = 1080;
+          splitHeight.value = Math.round(1080 / ratio) || 1920;
         }
         renderSplitPreview();
       };
@@ -505,78 +547,183 @@
 
     function renderSplitPreview() {
       if (!splitImage) return;
-      let parts;
-      const w = splitImage.naturalWidth;
-      const h = splitImage.naturalHeight;
+      const tw = parseInt(splitWidth.value) || 1080;
+      const th = parseInt(splitHeight.value) || 1920;
+      const fit = splitFit.value;
+      const lastMode = splitLast.value;
+      const origW = splitImage.naturalWidth;
+      const origH = splitImage.naturalHeight;
 
-      if (splitMode.value === 'parts') {
-        const n = parseInt(splitValue.value) || 3;
-        const partH = Math.floor(h / n);
-        parts = [];
-        for (let i = 0; i < n; i++) {
-          parts.push({
-            y: i * partH,
-            height: (i === n - 1) ? h - i * partH : partH
-          });
+      // Step 1: Scale original image to fit target dimensions
+      let scaledW, scaledH, sx, sy, sw, sh;
+      const targetRatio = tw / th;
+      const origRatio = origW / origH;
+
+      if (fit === 'width') {
+        // Scale to match target width exactly, height scales proportionally
+        scaledW = tw;
+        scaledH = Math.round(origH * (tw / origW));
+        sx = 0; sy = 0; sw = origW; sh = origH;
+      } else if (fit === 'contain') {
+        // Scale to fit fully within target, may have letterbox
+        if (origRatio > targetRatio) {
+          scaledW = tw;
+          scaledH = Math.round(tw / origRatio);
+        } else {
+          scaledH = th;
+          scaledW = Math.round(th * origRatio);
         }
+        sx = 0; sy = 0; sw = origW; sh = origH;
       } else {
-        const partH = parseInt(splitValue.value) || 1080;
-        parts = [];
-        for (let y = 0; y < h; y += partH) {
-          parts.push({
-            y: y,
-            height: Math.min(partH, h - y)
-          });
+        // Cover: fill target, may crop from original
+        if (origRatio > targetRatio) {
+          scaledH = th;
+          scaledW = Math.round(th * origRatio);
+          const cropW = Math.round(origH * targetRatio);
+          sx = Math.round((origW - cropW) / 2);
+          sw = cropW;
+          sy = 0; sh = origH;
+        } else {
+          scaledW = tw;
+          scaledH = Math.round(tw / origRatio);
+          const cropH = Math.round(origW / targetRatio);
+          sy = Math.round((origH - cropH) / 2);
+          sh = cropH;
+          sx = 0; sw = origW;
         }
       }
 
+      // Step 2: Split the scaled image vertically by target height
+      const slices = [];
+      for (let y = 0; y < scaledH; y += th) {
+        slices.push({
+          y: y,
+          height: Math.min(th, scaledH - y)
+        });
+      }
+
+      splitSummary.textContent = 'Original: ' + origW + 'x' + origH + ' → Scaled: ' + scaledW + 'x' + scaledH + ' → ' + slices.length + ' slice' + (slices.length > 1 ? 's' : '') + ' at ' + tw + 'x' + th;
+
+      // Step 3: Render preview
       splitPreview.innerHTML = '';
-      parts.forEach((part, i) => {
+      slices.forEach((slice, i) => {
+        const isLast = (i === slices.length - 1);
+        const outH = (isLast && lastMode === 'shorter') ? slice.height : th;
+
+        // Create an offscreen canvas at the scaled size first, then draw each slice
         const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = part.height;
+        canvas.width = scaledW;
+        canvas.height = slice.height;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(splitImage, 0, part.y, w, part.height, 0, 0, w, part.height);
+        ctx.drawImage(splitImage, sx, sy + slice.y * (sh / scaledH), sw, slice.height * (sh / scaledH), 0, 0, scaledW, slice.height);
+
+        // Now create output canvas at target dimensions
+        const outCanvas = document.createElement('canvas');
+        outCanvas.width = tw;
+        outCanvas.height = outH;
+        const outCtx = outCanvas.getContext('2d');
+        outCtx.imageSmoothingEnabled = true;
+        outCtx.imageSmoothingQuality = 'high';
+
+        if (isLast && lastMode === 'pad') {
+          // Pad with white
+          outCtx.fillStyle = '#ffffff';
+          outCtx.fillRect(0, 0, tw, th);
+          if (fit === 'contain') {
+            const padX = Math.round((tw - scaledW) / 2);
+            const padY = 0;
+            outCtx.drawImage(canvas, padX, padY, scaledW, slice.height);
+          } else {
+            outCtx.drawImage(canvas, 0, 0, scaledW, slice.height, 0, 0, tw, slice.height);
+          }
+        } else if (isLast && lastMode === 'stretch') {
+          outCtx.drawImage(canvas, 0, 0, scaledW, slice.height, 0, 0, tw, th);
+        } else {
+          if (fit === 'contain' && isLast && lastMode === 'shorter') {
+            const padX = Math.round((tw - scaledW) / 2);
+            outCtx.fillStyle = '#ffffff';
+            outCtx.fillRect(0, 0, tw, outH);
+            outCtx.drawImage(canvas, padX, 0, scaledW, slice.height);
+          } else {
+            outCtx.drawImage(canvas, 0, 0, scaledW, slice.height, 0, 0, tw, outH);
+          }
+        }
 
         const wrapper = document.createElement('div');
         wrapper.className = 'part';
-
         const imgEl = document.createElement('img');
-        imgEl.src = canvas.toDataURL('image/png');
-        imgEl.alt = 'Part ' + (i + 1);
-
+        imgEl.src = outCanvas.toDataURL('image/jpeg', 0.7);
+        imgEl.alt = 'Slice ' + (i + 1);
+        imgEl.loading = 'lazy';
         const label = document.createElement('div');
         label.className = 'part-label';
-        label.textContent = 'Part ' + (i + 1) + ' (' + w + 'x' + part.height + ')';
-
+        label.textContent = '#' + (i + 1) + ' — ' + tw + 'x' + outH;
         wrapper.appendChild(imgEl);
         wrapper.appendChild(label);
         splitPreview.appendChild(wrapper);
       });
 
-      splitPreview.dataset.parts = JSON.stringify(parts);
+      // Cache the slice data for download
+      splitPartsCache = {
+        slices, scaledW, scaledH, tw, th, fit, lastMode, sx, sy, sw, sh, origW, origH
+      };
     }
 
     splitBtn.addEventListener('click', () => {
-      if (!splitImage) { toast('Please load an image first.'); return; }
-      const partsData = splitPreview.dataset.parts;
-      if (!partsData) { toast('Click "Preview Split" first.'); return; }
-      const parts = JSON.parse(partsData);
-      const w = splitImage.naturalWidth;
-      const prefix = 'split-part-';
+      if (!splitImage || !splitPartsCache) { toast('Please load an image and preview first.'); return; }
+      const c = splitPartsCache;
+      const prefix = 'slice-';
 
-      parts.forEach((part, i) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = part.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(splitImage, 0, part.y, w, part.height, 0, 0, w, part.height);
-        canvas.toBlob(b => {
+      c.slices.forEach((slice, i) => {
+        const isLast = (i === c.slices.length - 1);
+        const outH = (isLast && c.lastMode === 'shorter') ? slice.height : c.th;
+
+        // Render source slice at scaled dimensions
+        const srcCanvas = document.createElement('canvas');
+        srcCanvas.width = c.scaledW;
+        srcCanvas.height = slice.height;
+        const srcCtx = srcCanvas.getContext('2d');
+        srcCtx.drawImage(splitImage,
+          c.sx, c.sy + slice.y * (c.sh / c.scaledH),
+          c.sw, slice.height * (c.sh / c.scaledH),
+          0, 0, c.scaledW, slice.height);
+
+        // Output at target dimensions
+        const outCanvas = document.createElement('canvas');
+        outCanvas.width = c.tw;
+        outCanvas.height = outH;
+        const outCtx = outCanvas.getContext('2d');
+        outCtx.imageSmoothingEnabled = true;
+        outCtx.imageSmoothingQuality = 'high';
+
+        if (isLast && c.lastMode === 'pad') {
+          outCtx.fillStyle = '#ffffff';
+          outCtx.fillRect(0, 0, c.tw, c.th);
+          if (c.fit === 'contain') {
+            const padX = Math.round((c.tw - c.scaledW) / 2);
+            outCtx.drawImage(srcCanvas, padX, 0, c.scaledW, slice.height);
+          } else {
+            outCtx.drawImage(srcCanvas, 0, 0, c.scaledW, slice.height, 0, 0, c.tw, slice.height);
+          }
+        } else if (isLast && c.lastMode === 'stretch') {
+          outCtx.drawImage(srcCanvas, 0, 0, c.scaledW, slice.height, 0, 0, c.tw, c.th);
+        } else {
+          if (c.fit === 'contain' && isLast && c.lastMode === 'shorter') {
+            const padX = Math.round((c.tw - c.scaledW) / 2);
+            outCtx.fillStyle = '#ffffff';
+            outCtx.fillRect(0, 0, c.tw, outH);
+            outCtx.drawImage(srcCanvas, padX, 0, c.scaledW, slice.height);
+          } else {
+            outCtx.drawImage(srcCanvas, 0, 0, c.scaledW, slice.height, 0, 0, c.tw, outH);
+          }
+        }
+
+        outCanvas.toBlob(b => {
           triggerDownload(b, prefix + (i + 1) + '.png');
         }, 'image/png');
       });
 
-      toast('Downloading ' + parts.length + ' parts...');
+      toast('Downloading ' + c.slices.length + ' slice' + (c.slices.length > 1 ? 's' : '') + '...');
     });
   </script>
 </body>
