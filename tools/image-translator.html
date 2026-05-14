@@ -120,17 +120,23 @@
     fileInput.addEventListener('click',e=>{console.log('fileInput clicked');e.stopPropagation();});
 
     function loadImage(file){
+      console.log('loadImage called',file.name,file.size);
       const url=URL.createObjectURL(file);
       mainImg.onload=()=>{
+        console.log('mainImg onload fired',mainImg.naturalWidth,mainImg.naturalHeight);
         origImage=mainImg;
         const cw=mainImg.clientWidth||mainImg.naturalWidth;
         displayScale=cw>0?mainImg.naturalWidth/cw:1;
         editor.style.display='block';
+        console.log('editor display set to block');
         zones=[];nextId=1;
-        renderZones();renderZoneList();
-        setMode('mark');
+        try{
+          renderZones();renderZoneList();
+          setMode('mark');
+          console.log('editor ready');
+        }catch(e){console.error('render error',e);}
       };
-      mainImg.onerror=()=>{toast('Failed to load image. Try another file.');};
+      mainImg.onerror=()=>{console.error('mainImg onerror');toast('Failed to load image. Try another file.');};
       mainImg.src=url;
     }
 
