@@ -3,12 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Cropper - Crop Images Online Free | Image Toolkit</title>
-  <meta name="keywords" content="image cropper, crop image online, photo crop tool, instagram crop, aspect ratio cropper, free image crop">
-  <meta name="description" content="Crop images online with preset ratios: 1:1, 16:9, 4:3, 3:2, and freeform. Perfect for social media, avatars, and thumbnails. All in your browser.">
+  <title>Image Cropper &amp; Long Image Splitter - Free Online | Image Toolkit</title>
+  <meta name="keywords" content="image cropper, crop image online, photo crop tool, instagram crop, aspect ratio cropper, long image splitter, split image for instagram, wechat long image cutter">
+  <meta name="description" content="Crop images with preset ratios and zoom control. Split long screenshots into equal parts for Instagram, WeChat, and social media. All in your browser, free.">
   <link rel="canonical" href="https://imagetoolkit-tau.vercel.app/tools/image-cropper.html">
   <link rel="stylesheet" href="../css/style.css">
-  </head>
+  <style>
+    .tab-nav { display:flex; gap:0; margin-bottom:24px; border-bottom:2px solid var(--border); }
+    .tab-nav button { padding:10px 28px; border:none; background:none; font-size:0.95rem; font-weight:600; color:var(--text-light); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px; transition:all var(--transition); }
+    .tab-nav button.active { color:var(--primary); border-bottom-color:var(--primary); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .zoom-bar { display:flex; align-items:center; gap:12px; margin:12px 0; }
+    .zoom-bar input[type="range"] { flex:1; max-width:280px; accent-color:var(--primary); }
+    .zoom-bar span { font-weight:600; font-size:0.85rem; min-width:48px; text-align:center; }
+    .split-preview { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; margin-top:16px; }
+    .split-preview .part { border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; background:var(--card); }
+    .split-preview .part img { width:100%; display:block; }
+    .split-preview .part .part-label { padding:6px 10px; font-size:0.8rem; color:var(--text-light); text-align:center; }
+    .crop-wrapper { position:relative; display:inline-block; max-width:100%; overflow:hidden; border-radius:var(--radius); }
+    .crop-wrapper img { display:block; transition:width 0.15s ease; }
+    .crop-overlay { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+    .crop-box { position:absolute; border:2px dashed #fff; box-shadow:0 0 0 9999px rgba(0,0,0,0.5); cursor:move; pointer-events:auto; display:none; }
+    .crop-box .resize-handle { position:absolute; width:12px; height:12px; background:#fff; border:2px solid var(--primary); border-radius:2px; }
+    .resize-handle.nw { top:-6px; left:-6px; cursor:nw-resize; }
+    .resize-handle.ne { top:-6px; right:-6px; cursor:ne-resize; }
+    .resize-handle.sw { bottom:-6px; left:-6px; cursor:sw-resize; }
+    .resize-handle.se { bottom:-6px; right:-6px; cursor:se-resize; }
+  </style>
+</head>
 <body>
   <header>
     <div class="header-inner">
@@ -25,115 +48,536 @@
       </nav>
     </div>
   </header>
+
   <main class="container tool-container">
     <div class="tool-header">
-      <h1>Image Cropper</h1>
-      <p>Crop images with preset aspect ratios or freeform. Download instantly.</p>
+      <h1>&#x2702;&#xFE0F; Image Cropper &amp; Long Image Splitter</h1>
+      <p>Crop with zoom control and preset ratios. Split long screenshots into equal parts for social media.</p>
     </div>
+
+    <!-- Drop Zone -->
     <div class="drop-zone" id="dropZone">
-      <div class="dz-icon">✂️</div>
+      <div class="dz-icon">&#x2702;&#xFE0F;</div>
       <h3>Drop an image here or click to browse</h3>
-      <p>Supports all image formats</p>
+      <p>Supports all image formats. Crop or split in seconds.</p>
       <input type="file" id="fileInput" accept="image/*">
     </div>
 
+    <!-- Editor Area (hidden until image loaded) -->
     <div id="editor" style="display:none;">
-      <div class="controls" style="margin-bottom:16px;">
-        <label>Aspect ratio:</label>
-        <select id="ratio">
-          <option value="free">Freeform</option>
-          <option value="1:1">1:1 (Square)</option>
-          <option value="16:9">16:9 (Video)</option>
-          <option value="4:3">4:3 (Photo)</option>
-          <option value="3:2">3:2 (Classic)</option>
-          <option value="9:16">9:16 (Story)</option>
-          <option value="2:1">2:1 (Panorama)</option>
-        </select>
-        <button class="btn btn-primary" id="cropBtn">Crop & Download</button>
-        <button class="btn btn-secondary" id="resetBtn">Reset</button>
+
+      <!-- Tabs -->
+      <div class="tab-nav">
+        <button class="active" data-tab="crop">&#x2702;&#xFE0F; Crop</button>
+        <button data-tab="split">&#x1F4D0; Split Long Image</button>
       </div>
-      <div style="position:relative;display:inline-block;max-width:100%;overflow:hidden;" id="cropContainer">
-        <img id="image" style="max-width:100%;display:block;">
-        <div id="cropBox" style="position:absolute;border:2px dashed #fff;box-shadow:0 0 0 9999px rgba(0,0,0,0.5);cursor:move;display:none;"></div>
+
+      <!-- === CROP TAB === -->
+      <div class="tab-panel active" id="panel-crop">
+        <div class="controls" style="margin-bottom:12px;flex-wrap:wrap;">
+          <label>Aspect ratio:</label>
+          <select id="ratio">
+            <option value="free">Freeform</option>
+            <option value="1:1">1:1 (Square)</option>
+            <option value="16:9">16:9 (Video)</option>
+            <option value="4:3">4:3 (Photo)</option>
+            <option value="3:2">3:2 (Classic)</option>
+            <option value="9:16">9:16 (Story)</option>
+            <option value="2:1">2:1 (Panorama)</option>
+          </select>
+        </div>
+
+        <!-- Zoom Slider -->
+        <div class="zoom-bar">
+          <label style="font-size:0.85rem;">&#x1F50D; Zoom:</label>
+          <input type="range" id="zoomSlider" min="25" max="300" value="100" step="5">
+          <span id="zoomLabel">100%</span>
+          <button class="btn btn-sm btn-secondary" id="zoomFit">Fit</button>
+          <button class="btn btn-sm btn-secondary" id="zoom100">100%</button>
+        </div>
+
+        <div class="crop-wrapper" id="cropContainer">
+          <img id="imgCrop" style="max-width:100%;display:block;width:100%;" alt="Crop preview">
+          <div class="crop-box" id="cropBox">
+            <div class="resize-handle nw" id="handleNw"></div>
+            <div class="resize-handle ne" id="handleNe"></div>
+            <div class="resize-handle sw" id="handleSw"></div>
+            <div class="resize-handle se" id="handleSe"></div>
+          </div>
+        </div>
+
+        <div class="controls" style="margin-top:16px;">
+          <button class="btn btn-primary" id="cropBtn">Crop &amp; Download</button>
+          <button class="btn btn-secondary" id="resetCropBtn">Reset</button>
+        </div>
       </div>
+
+      <!-- === SPLIT TAB === -->
+      <div class="tab-panel" id="panel-split">
+        <div class="controls" style="margin-bottom:16px;flex-wrap:wrap;">
+          <label style="font-weight:600;">Split mode:</label>
+          <select id="splitMode">
+            <option value="parts">By number of parts</option>
+            <option value="height">By pixel height</option>
+          </select>
+          <label id="splitLabel" style="margin-left:8px;">Parts:</label>
+          <input type="number" id="splitValue" min="2" max="20" value="3" style="width:70px;">
+        </div>
+
+        <div id="splitPreview" class="split-preview"></div>
+
+        <div class="controls" style="margin-top:16px;">
+          <button class="btn btn-primary" id="splitBtn">&#x1F4E5; Download All Parts</button>
+          <button class="btn btn-secondary" id="downloadSingleBtns" style="display:none;"></button>
+        </div>
+      </div>
+
     </div>
 
-    </main>
-  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+    <!-- How-To Section -->
+    <section style="margin-top:48px;">
+      <h2 style="font-size:1.3rem;margin-bottom:12px;">How to Use</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+        <div style="background:var(--card);padding:18px;border-radius:var(--radius);border:1px solid var(--border);">
+          <h4 style="margin-bottom:6px;">&#x1F4F7; Crop Mode</h4>
+          <p style="color:var(--text-light);font-size:0.85rem;">Upload any image, choose a preset aspect ratio, use <strong>zoom</strong> to shrink or enlarge the image for perfect framing, then crop and download.</p>
+        </div>
+        <div style="background:var(--card);padding:18px;border-radius:var(--radius);border:1px solid var(--border);">
+          <h4 style="margin-bottom:6px;">&#x1F4D0; Split Mode</h4>
+          <p style="color:var(--text-light);font-size:0.85rem;">Upload a long screenshot or scroll capture. Choose number of parts or pixel height per slice. Each part downloads as a separate image — perfect for Instagram carousels, WeChat Moments, or Twitter threads.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer><p>&copy; 2026 Image Toolkit. All tools run locally in your browser. <a href="../privacy.html">Privacy Policy</a></p></footer>
 
   <script>
-    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
-    const editor=document.getElementById('editor'),image=document.getElementById('image');
-    const cropBox=document.getElementById('cropBox'),ratioSel=document.getElementById('ratio');
-    const cropBtn=document.getElementById('cropBtn'),resetBtn=document.getElementById('resetBtn');
-    let isDragging=false,startX,startY,boxX=0,boxY=0,boxW=200,boxH=200;
+    // ============ COMMON ============
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const editor = document.getElementById('editor');
+    let loadedFile = null;
 
-    dropZone.addEventListener('click',()=>fileInput.click());
-    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
-    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
-    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);});
-    fileInput.addEventListener('change',e=>{if(e.target.files[0])loadFile(e.target.files[0]);});
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault(); dropZone.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) loadImage(e.target.files[0]); });
 
-    function loadFile(file){
-      const url=URL.createObjectURL(file);image.src=url;
-      image.onload=()=>{
-        editor.style.display='block';
-        const mw=Math.min(image.naturalWidth,800),s=mw/image.naturalWidth;
-        image.style.width=mw+'px';
-        boxW=Math.min(300,mw*0.5);boxH=boxW;
-        boxX=(mw-boxW)/2;boxY=0;
+    function loadImage(file) {
+      loadedFile = file;
+      editor.style.display = 'block';
+      cropLoadImage(file);
+      splitLoadImage(file);
+    }
+
+    // Tabs
+    document.querySelectorAll('.tab-nav button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-nav button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'split' && loadedFile) splitLoadImage(loadedFile);
+      });
+    });
+
+    function toast(m) {
+      const t = document.createElement('div'); t.className = 'toast'; t.textContent = m;
+      document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+    }
+
+    function triggerDownload(blob, filename) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+    }
+
+    // ============ CROP MODE ============
+    const imgCrop = document.getElementById('imgCrop');
+    const cropBox = document.getElementById('cropBox');
+    const ratioSel = document.getElementById('ratio');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const zoomLabel = document.getElementById('zoomLabel');
+    const cropContainer = document.getElementById('cropContainer');
+    const cropBtn = document.getElementById('cropBtn');
+    const resetCropBtn = document.getElementById('resetCropBtn');
+
+    let cropBaseWidth, cropZoom = 1, boxX = 0, boxY = 0, boxW = 200, boxH = 200;
+    let dragMode = null, dragStartX, dragStartY, dragStartBoxX, dragStartBoxY, dragStartBoxW, dragStartBoxH;
+    const RATIO_LOCKED = 0.02; // threshold to detect ratio-locked resizing
+
+    function cropLoadImage(file) {
+      const url = URL.createObjectURL(file);
+      imgCrop.src = url;
+      imgCrop.onload = () => {
+        cropBaseWidth = Math.min(imgCrop.naturalWidth, 800);
+        cropZoom = 1;
+        zoomSlider.value = 100;
+        zoomLabel.textContent = '100%';
+        applyCropZoom();
+        boxW = Math.min(300, cropBaseWidth * 0.5);
+        boxH = boxW;
+        boxX = (cropBaseWidth - boxW) / 2;
+        boxY = 0;
         updateCropBox();
-        applyRatio();
+        applyCropRatio();
       };
     }
 
-    ratioSel.addEventListener('change',applyRatio);
-    function applyRatio(){
-      const v=ratioSel.value;
-      if(v==='free')return;
-      const[p]=v.split(':').map(Number);const r=p;
-      if(v==='16:9'){boxH=boxW*9/16;}else if(v==='9:16'){boxH=boxW*16/9;}
-      else if(v==='4:3'){boxH=boxW*3/4;}
-      else if(v==='3:2'){boxH=boxW*2/3;}
-      else if(v==='2:1'){boxH=boxW*0.5;}
-      else{boxH=boxW;}
+    function applyCropZoom() {
+      cropZoom = zoomSlider.value / 100;
+      zoomLabel.textContent = Math.round(cropZoom * 100) + '%';
+      imgCrop.style.width = (cropBaseWidth * cropZoom) + 'px';
+      // Adjust box position proportionally
+      const oldW = parseFloat(cropBox.style.width) || boxW;
+      const oldH = parseFloat(cropBox.style.height) || boxH;
+      const oldX = parseFloat(cropBox.style.left) || boxX;
+      const oldY = parseFloat(cropBox.style.top) || boxY;
+      boxW = oldW; boxH = oldH;
+      boxX = oldX; boxY = oldY;
+      clampCropBox();
       updateCropBox();
     }
 
-    function updateCropBox(){
-      cropBox.style.display='block';
-      cropBox.style.left=boxX+'px';cropBox.style.top=boxY+'px';
-      cropBox.style.width=boxW+'px';cropBox.style.height=boxH+'px';
+    zoomSlider.addEventListener('input', applyCropZoom);
+
+    document.getElementById('zoomFit').addEventListener('click', () => {
+      cropBaseWidth = Math.min(imgCrop.naturalWidth, 800);
+      zoomSlider.value = 100;
+      applyCropZoom();
+      boxW = Math.min(300, cropBaseWidth * 0.5); boxH = boxW;
+      boxX = (cropBaseWidth - boxW) / 2; boxY = 0;
+      updateCropBox();
+      applyCropRatio();
+    });
+
+    document.getElementById('zoom100').addEventListener('click', () => {
+      zoomSlider.value = 100;
+      applyCropZoom();
+    });
+
+    function clampCropBox() {
+      const displayW = cropBaseWidth * cropZoom;
+      const imgH = imgCrop.naturalHeight * (displayW / imgCrop.naturalWidth);
+      boxX = Math.max(0, Math.min(boxX, displayW - boxW));
+      boxY = Math.max(0, Math.min(boxY, imgH - boxH));
     }
 
-    cropBox.addEventListener('mousedown',e=>{isDragging=true;startX=e.clientX-boxX;startY=e.clientY-boxY;cropBox.style.cursor='grabbing';});
-    document.addEventListener('mousemove',e=>{
-      if(!isDragging)return;
-      const rect=image.getBoundingClientRect();
-      boxX=Math.max(0,Math.min(e.clientX-startX,rect.width-boxW));
-      boxY=Math.max(0,Math.min(e.clientY-startY,rect.height-boxH));
+    function updateCropBox() {
+      cropBox.style.display = 'block';
+      cropBox.style.left = boxX + 'px';
+      cropBox.style.top = boxY + 'px';
+      cropBox.style.width = boxW + 'px';
+      cropBox.style.height = boxH + 'px';
+    }
+
+    ratioSel.addEventListener('change', applyCropRatio);
+    function applyCropRatio() {
+      const v = ratioSel.value;
+      if (v === 'free') return;
+      const [w, h] = v.split(':').map(Number);
+      boxH = boxW * h / w;
+      clampCropBox();
+      updateCropBox();
+    }
+
+    // Drag to move
+    cropBox.addEventListener('mousedown', e => {
+      if (e.target.classList.contains('resize-handle')) return;
+      dragMode = 'move';
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      dragStartBoxX = boxX;
+      dragStartBoxY = boxY;
+      cropBox.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    // Resize handles
+    const resizeHandles = {
+      nw: { cursor: 'nw-resize', dx: -1, dy: -1, dw: -1, dh: -1 },
+      ne: { cursor: 'ne-resize', dx: 0, dy: -1, dw: 1, dh: -1 },
+      sw: { cursor: 'sw-resize', dx: -1, dy: 0, dw: -1, dh: 1 },
+      se: { cursor: 'se-resize', dx: 0, dy: 0, dw: 1, dh: 1 }
+    };
+
+    Object.entries(resizeHandles).forEach(([id, cfg]) => {
+      document.getElementById('handle' + id.charAt(0).toUpperCase() + id.charAt(1)).addEventListener('mousedown', e => {
+        dragMode = id;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        dragStartBoxX = boxX;
+        dragStartBoxY = boxY;
+        dragStartBoxW = boxW;
+        dragStartBoxH = boxH;
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!dragMode) return;
+      const displayW = cropBaseWidth * cropZoom;
+      const imgH = imgCrop.naturalHeight * (displayW / imgCrop.naturalWidth);
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+
+      if (dragMode === 'move') {
+        boxX = Math.max(0, Math.min(dragStartBoxX + dx, displayW - boxW));
+        boxY = Math.max(0, Math.min(dragStartBoxY + dy, imgH - boxH));
+      } else {
+        const cfg = resizeHandles[dragMode];
+        let newW = dragStartBoxW + cfg.dw * dx;
+        let newH = dragStartBoxH + cfg.dh * dy;
+        let newX = dragStartBoxX + cfg.dx * dx;
+        let newY = dragStartBoxY + cfg.dy * dy;
+
+        // Lock ratio if not freeform
+        if (ratioSel.value !== 'free') {
+          const [rw, rh] = ratioSel.value.split(':').map(Number);
+          const ratio = rw / rh;
+          // Use the larger delta
+          if (Math.abs(dx / (dragStartBoxW || 1)) > Math.abs(dy / (dragStartBoxH || 1))) {
+            newW = Math.max(40, newW);
+            newH = newW / ratio;
+          } else {
+            newH = Math.max(40, newH);
+            newW = newH * ratio;
+          }
+          // Recalculate position
+          newX = cfg.dx < 0 ? dragStartBoxX + dragStartBoxW - newW : dragStartBoxX;
+          newY = cfg.dy < 0 ? dragStartBoxY + dragStartBoxH - newH : dragStartBoxY;
+        }
+
+        newW = Math.max(40, Math.min(newW, displayW));
+        newH = Math.max(40, Math.min(newH, imgH));
+        newX = Math.max(0, newX);
+        newY = Math.max(0, newY);
+        if (newX + newW > displayW) newW = displayW - newX;
+        if (newY + newH > imgH) newH = imgH - newY;
+
+        boxX = newX; boxY = newY; boxW = newW; boxH = newH;
+      }
       updateCropBox();
     });
-    document.addEventListener('mouseup',()=>{isDragging=false;cropBox.style.cursor='move';});
 
-    cropBtn.addEventListener('click',()=>{
-      const canvas=document.createElement('canvas');
-      const scale=image.naturalWidth/image.width;
-      canvas.width=boxW*scale;canvas.height=boxH*scale;
-      const ctx=canvas.getContext('2d');
-      ctx.drawImage(image,boxX*scale,boxY*scale,canvas.width,canvas.height,0,0,canvas.width,canvas.height);
-      canvas.toBlob(b=>{
-        const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='cropped-image.png';a.click();
+    document.addEventListener('mouseup', () => {
+      dragMode = null;
+      cropBox.style.cursor = 'move';
+    });
+
+    // Touch support
+    cropBox.addEventListener('touchstart', e => {
+      if (e.target.classList.contains('resize-handle')) return;
+      const t = e.touches[0];
+      dragMode = 'move';
+      dragStartX = t.clientX; dragStartY = t.clientY;
+      dragStartBoxX = boxX; dragStartBoxY = boxY;
+    }, { passive: false });
+
+    Object.entries(resizeHandles).forEach(([id, cfg]) => {
+      document.getElementById('handle' + id.charAt(0).toUpperCase() + id.charAt(1)).addEventListener('touchstart', e => {
+        const t = e.touches[0];
+        dragMode = id;
+        dragStartX = t.clientX; dragStartY = t.clientY;
+        dragStartBoxX = boxX; dragStartBoxY = boxY;
+        dragStartBoxW = boxW; dragStartBoxH = boxH;
+        e.stopPropagation();
+      }, { passive: false });
+    });
+
+    document.addEventListener('touchmove', e => {
+      if (!dragMode) return;
+      const t = e.touches[0];
+      const displayW = cropBaseWidth * cropZoom;
+      const imgH = imgCrop.naturalHeight * (displayW / imgCrop.naturalWidth);
+      const dx = t.clientX - dragStartX;
+      const dy = t.clientY - dragStartY;
+
+      if (dragMode === 'move') {
+        boxX = Math.max(0, Math.min(dragStartBoxX + dx, displayW - boxW));
+        boxY = Math.max(0, Math.min(dragStartBoxY + dy, imgH - boxH));
+      } else {
+        const cfg = resizeHandles[dragMode];
+        let newW = dragStartBoxW + cfg.dw * dx;
+        let newH = dragStartBoxH + cfg.dh * dy;
+        let newX = dragStartBoxX + cfg.dx * dx;
+        let newY = dragStartBoxY + cfg.dy * dy;
+
+        if (ratioSel.value !== 'free') {
+          const [rw, rh] = ratioSel.value.split(':').map(Number);
+          const ratio = rw / rh;
+          if (Math.abs(dx / (dragStartBoxW || 1)) > Math.abs(dy / (dragStartBoxH || 1))) {
+            newW = Math.max(40, newW);
+            newH = newW / ratio;
+          } else {
+            newH = Math.max(40, newH);
+            newW = newH * ratio;
+          }
+          newX = cfg.dx < 0 ? dragStartBoxX + dragStartBoxW - newW : dragStartBoxX;
+          newY = cfg.dy < 0 ? dragStartBoxY + dragStartBoxH - newH : dragStartBoxY;
+        }
+
+        newW = Math.max(40, Math.min(newW, displayW));
+        newH = Math.max(40, Math.min(newH, imgH));
+        newX = Math.max(0, newX);
+        newY = Math.max(0, newY);
+        if (newX + newW > displayW) newW = displayW - newX;
+        if (newY + newH > imgH) newH = imgH - newY;
+
+        boxX = newX; boxY = newY; boxW = newW; boxH = newH;
+      }
+      updateCropBox();
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => { dragMode = null; });
+
+    cropBtn.addEventListener('click', () => {
+      const scale = imgCrop.naturalWidth / (cropBaseWidth * cropZoom);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(boxW * scale);
+      canvas.height = Math.round(boxH * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(imgCrop, boxX * scale, boxY * scale, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(b => {
+        triggerDownload(b, 'cropped-image.png');
         toast('Cropped image downloaded!');
-      },'image/png');
+      }, 'image/png');
     });
 
-    resetBtn.addEventListener('click',()=>{
-      boxX=0;boxY=0;boxW=200;boxH=200;updateCropBox();applyRatio();
+    resetCropBtn.addEventListener('click', () => {
+      zoomSlider.value = 100;
+      applyCropZoom();
+      boxW = Math.min(300, cropBaseWidth * 0.5);
+      boxH = boxW;
+      boxX = (cropBaseWidth - boxW) / 2;
+      boxY = 0;
+      updateCropBox();
+      applyCropRatio();
     });
 
-    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+    // ============ SPLIT MODE ============
+    const splitMode = document.getElementById('splitMode');
+    const splitValue = document.getElementById('splitValue');
+    const splitLabel = document.getElementById('splitLabel');
+    const splitPreview = document.getElementById('splitPreview');
+    const splitBtn = document.getElementById('splitBtn');
+    let splitImage = null;
+
+    splitMode.addEventListener('change', () => {
+      if (splitMode.value === 'parts') {
+        splitLabel.textContent = 'Parts:';
+        splitValue.min = 2; splitValue.max = 20;
+        splitValue.value = 3;
+      } else {
+        splitLabel.textContent = 'Height (px):';
+        splitValue.min = 100; splitValue.max = 10000;
+        splitValue.value = 1080;
+      }
+      if (splitImage) renderSplitPreview();
+    });
+
+    splitValue.addEventListener('input', () => { if (splitImage) renderSplitPreview(); });
+
+    function splitLoadImage(file) {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        splitImage = img;
+        // Auto-detect: if image is very tall (aspect ratio > 2), suggest split
+        if (img.naturalHeight / img.naturalWidth > 2) {
+          splitMode.value = 'height';
+          splitLabel.textContent = 'Height (px):';
+          splitValue.min = 100; splitValue.max = 10000;
+          splitValue.value = Math.round(img.naturalWidth * 16 / 9) || 1080;
+          splitPreview.parentElement.parentElement.style.display = 'block';
+        }
+        renderSplitPreview();
+      };
+      img.src = url;
+    }
+
+    function renderSplitPreview() {
+      if (!splitImage) return;
+      let parts;
+      const w = splitImage.naturalWidth;
+      const h = splitImage.naturalHeight;
+
+      if (splitMode.value === 'parts') {
+        const n = parseInt(splitValue.value) || 3;
+        const partH = Math.floor(h / n);
+        parts = [];
+        for (let i = 0; i < n; i++) {
+          parts.push({
+            y: i * partH,
+            height: (i === n - 1) ? h - i * partH : partH
+          });
+        }
+      } else {
+        const partH = parseInt(splitValue.value) || 1080;
+        parts = [];
+        for (let y = 0; y < h; y += partH) {
+          parts.push({
+            y: y,
+            height: Math.min(partH, h - y)
+          });
+        }
+      }
+
+      splitPreview.innerHTML = '';
+      parts.forEach((part, i) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = part.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(splitImage, 0, part.y, w, part.height, 0, 0, w, part.height);
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'part';
+
+        const imgEl = document.createElement('img');
+        imgEl.src = canvas.toDataURL('image/png');
+        imgEl.alt = 'Part ' + (i + 1);
+
+        const label = document.createElement('div');
+        label.className = 'part-label';
+        label.textContent = 'Part ' + (i + 1) + ' (' + w + 'x' + part.height + ')';
+
+        wrapper.appendChild(imgEl);
+        wrapper.appendChild(label);
+        splitPreview.appendChild(wrapper);
+      });
+
+      splitPreview.dataset.parts = JSON.stringify(parts);
+    }
+
+    splitBtn.addEventListener('click', () => {
+      if (!splitImage) { toast('Please load an image first.'); return; }
+      const partsData = splitPreview.dataset.parts;
+      if (!partsData) { toast('Click "Preview Split" first.'); return; }
+      const parts = JSON.parse(partsData);
+      const w = splitImage.naturalWidth;
+      const prefix = 'split-part-';
+
+      parts.forEach((part, i) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = part.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(splitImage, 0, part.y, w, part.height, 0, 0, w, part.height);
+        canvas.toBlob(b => {
+          triggerDownload(b, prefix + (i + 1) + '.png');
+        }, 'image/png');
+      });
+
+      toast('Downloading ' + parts.length + ' parts...');
+    });
   </script>
 </body>
 </html>
-
