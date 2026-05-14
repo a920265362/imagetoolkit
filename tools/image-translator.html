@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-Commerce Image Translator - Translate Product Image Text Free | Image Toolkit</title>
+  <meta name="keywords" content="image translator, translate product image, ecommerce image translation, cross border image translator, translate text in image, product photo translate">
+  <meta name="description" content="Translate text in product images for cross-border e-commerce. Mark text zones, translate, erase original text, and overlay new text. Editable, beautiful restoration. Free, browser-based.">
+  <link rel="canonical" href="https://imagetoolkit-tau.vercel.app/tools/image-translator.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .editor-wrap { position:relative; display:inline-block; max-width:100%; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .editor-wrap img, .editor-wrap canvas { display:block; max-width:100%; height:auto; }
+    .editor-wrap canvas { position:absolute; top:0; left:0; }
+    .zone-box { position:absolute; border:2px solid var(--primary); background:rgba(99,102,241,0.1); cursor:move; min-width:60px; min-height:24px; }
+    .zone-box:hover { background:rgba(99,102,241,0.2); }
+    .zone-box .zone-resize { position:absolute; width:10px; height:10px; background:var(--primary); border:2px solid #fff; border-radius:2px; }
+    .zone-box .zone-label { position:absolute; top:-22px; left:-2px; background:var(--primary); color:#fff; font-size:0.7rem; padding:2px 8px; border-radius:4px; white-space:nowrap; pointer-events:none; }
+    .zone-list { margin-top:16px; display:flex; flex-direction:column; gap:10px; }
+    .zone-item { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px; }
+    .zone-item .zi-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .zone-item .zi-num { background:var(--primary); color:#fff; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; flex-shrink:0; }
+    .zone-item .zi-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:6px; }
+    .zone-item label { font-size:0.8rem; font-weight:600; min-width:55px; color:var(--text-light); }
+    .zone-item input, .zone-item select { padding:7px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; font-family:inherit; }
+    .zone-item input[type="text"] { flex:1; min-width:120px; }
+    .zone-item select { min-width:90px; }
+    .zone-item input[type="color"] { width:36px; height:33px; padding:2px; cursor:pointer; }
+    .zone-item .zi-translated { font-weight:600; color:var(--primary); }
+    .zone-item .btn-sm { padding:4px 10px; font-size:0.75rem; }
+    .zone-item .btn-sm.danger { background:#fef2f2; color:var(--danger); border-color:#fecaca; }
+    .mode-bar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+    .mode-bar button { padding:8px 18px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="background-remover.html">AI BG</a><a href="image-cropper.html">Crop</a><a href="image-compressor.html">Compress</a><a href="format-converter.html">Convert</a><a href="meme-generator.html">Meme</a></nav>
+    </div>
+  </header>
+
+  <main class="container tool-container">
+    <div class="tool-header">
+      <h1>&#x1F310; E-Commerce Image Translator</h1>
+      <p>Translate product image text for cross-border selling. Mark text zones, translate, erase originals, overlay new text. Perfect for Amazon, AliExpress, Shopee listings.</p>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="dz-icon">&#x1F310;</div>
+      <h3>Drop a product image here or click to browse</h3>
+      <p>Then draw rectangles over the text you want to translate</p>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div id="editor" style="display:none;">
+      <div class="mode-bar">
+        <button class="btn btn-primary" id="modeMark"><span id="modeIndicator">&#x1F4D0;</span> Mark Text Zones</button>
+        <button class="btn btn-secondary" id="modePan">&#x1F50D; Pan / Adjust Zones</button>
+        <span style="color:var(--text-light);font-size:0.8rem;align-self:center;margin-left:8px;" id="modeHint">Click and drag on the image to mark a text zone</span>
+      </div>
+
+      <div style="display:flex;gap:24px;flex-wrap:wrap;">
+        <div class="editor-wrap" id="editorWrap" style="flex:2;min-width:320px;">
+          <img id="mainImg" alt="Product image" style="display:block;max-width:100%;">
+          <canvas id="overlayCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+          <div id="zonesContainer" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
+        </div>
+
+        <div style="flex:1;min-width:300px;" id="zoneListWrap">
+          <h3 style="font-size:0.95rem;margin-bottom:10px;">&#x1F4CB; Text Zones (<span id="zoneCount">0</span>)</h3>
+          <p style="color:var(--text-light);font-size:0.8rem;margin-bottom:12px;">Mark zones on the image, then type or translate text for each.</p>
+          <div class="zone-list" id="zoneList"></div>
+          <div class="controls" style="margin-top:16px;">
+            <button class="btn btn-primary" id="applyBtn">&#x1F3A8; Apply &amp; Preview</button>
+            <button class="btn btn-success" id="dlBtn">&#x1F4E5; Download</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section style="margin-top:48px;">
+      <h2 style="font-size:1.3rem;margin-bottom:12px;">How to Use</h2>
+      <ol style="color:var(--text-light);padding-left:20px;line-height:2;">
+        <li><strong>Upload</strong> a product image with text you want to translate</li>
+        <li><strong>Mark zones</strong> — click and drag rectangles over each text block</li>
+        <li><strong>Type or translate</strong> — enter original and translated text, choose font/size/color to match the original style</li>
+        <li><strong>Preview</strong> — the tool erases the original text area and overlays the new translation</li>
+        <li><strong>Download</strong> — export the translated image. All processing is local.</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+
+  <script>
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const editor=document.getElementById('editor'),mainImg=document.getElementById('mainImg');
+    const overlayCanvas=document.getElementById('overlayCanvas'),zonesContainer=document.getElementById('zonesContainer');
+    const editorWrap=document.getElementById('editorWrap');
+    const zoneList=document.getElementById('zoneList'),zoneCount=document.getElementById('zoneCount');
+    const modeMark=document.getElementById('modeMark'),modePan=document.getElementById('modePan');
+    const modeIndicator=document.getElementById('modeIndicator'),modeHint=document.getElementById('modeHint');
+    const applyBtn=document.getElementById('applyBtn'),dlBtn=document.getElementById('dlBtn');
+
+    let zones=[],currentMode='mark',drawing=null,origImage=null;
+    let dragging=null,dragStartX,dragStartY,dragStartLeft,dragStartTop;
+    let resizing=null,resizeStartX,resizeStartY,resizeStartW,resizeStartH,resizeStartL,resizeStartT;
+    let nextId=1,displayScale=1;
+
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])loadImage(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',e=>{if(e.target.files[0])loadImage(e.target.files[0]);});
+
+    function loadImage(file){
+      const url=URL.createObjectURL(file);
+      mainImg.src=url;
+      mainImg.onload=()=>{
+        origImage=mainImg;
+        displayScale=mainImg.naturalWidth/mainImg.clientWidth;
+        editor.style.display='block';
+        zones=[];nextId=1;
+        renderZones();renderZoneList();
+        setMode('mark');
+      };
+    }
+
+    // Mode switching
+    modeMark.addEventListener('click',()=>setMode('mark'));
+    modePan.addEventListener('click',()=>setMode('pan'));
+
+    function setMode(m){
+      currentMode=m;
+      modeMark.className=m==='mark'?'btn btn-primary':'btn btn-secondary';
+      modePan.className=m==='pan'?'btn btn-primary':'btn btn-secondary';
+      modeIndicator.textContent=m==='mark'?'📐':'🔍';
+      modeHint.textContent=m==='mark'?'Click and drag on the image to mark a text zone':'Drag zones to reposition. Drag corner handles to resize.';
+      zonesContainer.style.pointerEvents=m==='pan'?'auto':'none';
+    }
+
+    // Drawing on image to create zones
+    editorWrap.addEventListener('mousedown',e=>{
+      if(currentMode!=='mark')return;
+      const rect=editorWrap.getBoundingClientRect();
+      drawing={x:e.clientX-rect.left,y:e.clientY-rect.top};
+    });
+
+    editorWrap.addEventListener('mousemove',e=>{
+      if(!drawing)return;
+      const rect=editorWrap.getBoundingClientRect();
+      const x=e.clientX-rect.left,y=e.clientY-rect.top;
+      // Show preview rect
+      if(!drawing.preview){
+        drawing.preview=document.createElement('div');
+        drawing.preview.style.cssText='position:absolute;border:2px dashed var(--primary);background:rgba(99,102,241,0.08);pointer-events:none;z-index:10;';
+        zonesContainer.appendChild(drawing.preview);
+      }
+      const l=Math.min(drawing.x,x),t=Math.min(drawing.y,y);
+      const w=Math.abs(x-drawing.x),h=Math.abs(y-drawing.y);
+      drawing.preview.style.left=l+'px';drawing.preview.style.top=t+'px';
+      drawing.preview.style.width=w+'px';drawing.preview.style.height=h+'px';
+    });
+
+    editorWrap.addEventListener('mouseup',e=>{
+      if(!drawing)return;
+      const rect=editorWrap.getBoundingClientRect();
+      const x=e.clientX-rect.left,y=e.clientY-rect.top;
+      const w=Math.abs(x-drawing.x),h=Math.abs(y-drawing.y);
+      if(drawing.preview)drawing.preview.remove();
+      if(w>15&&h>15){
+        const l=Math.min(drawing.x,x),t=Math.min(drawing.y,y);
+        zones.push({
+          id:nextId++,
+          left:l,top:t,width:w,height:h,
+          original:'',translated:'',
+          fontSize:16,fontColor:'#1a1d23',fontFamily:'Arial',
+          bold:false,align:'center'
+        });
+        renderZones();renderZoneList();
+      }
+      drawing=null;
+    });
+
+    // Touch support for marking
+    editorWrap.addEventListener('touchstart',e=>{
+      if(currentMode!=='mark')return;
+      const t=e.touches[0];
+      const rect=editorWrap.getBoundingClientRect();
+      drawing={x:t.clientX-rect.left,y:t.clientY-rect.top};
+      e.preventDefault();
+    },{passive:false});
+    editorWrap.addEventListener('touchmove',e=>{
+      if(!drawing)return;
+      const t=e.touches[0];
+      const rect=editorWrap.getBoundingClientRect();
+      const x=t.clientX-rect.left,y=t.clientY-rect.top;
+      if(!drawing.preview){
+        drawing.preview=document.createElement('div');
+        drawing.preview.style.cssText='position:absolute;border:2px dashed var(--primary);background:rgba(99,102,241,0.08);pointer-events:none;z-index:10;';
+        zonesContainer.appendChild(drawing.preview);
+      }
+      const l=Math.min(drawing.x,x),t=Math.min(drawing.y,y);
+      drawing.preview.style.left=l+'px';drawing.preview.style.top=t+'px';
+      drawing.preview.style.width=Math.abs(x-drawing.x)+'px';
+      drawing.preview.style.height=Math.abs(y-drawing.y)+'px';
+    });
+    editorWrap.addEventListener('touchend',e=>{
+      if(!drawing)return;
+      const t=e.changedTouches[0];
+      const rect=editorWrap.getBoundingClientRect();
+      const x=t.clientX-rect.left,y=t.clientY-rect.top;
+      const w=Math.abs(x-drawing.x),h=Math.abs(y-drawing.y);
+      if(drawing.preview)drawing.preview.remove();
+      if(w>15&&h>15){
+        const l=Math.min(drawing.x,x),t=Math.min(drawing.y,y);
+        zones.push({
+          id:nextId++,left:l,top:t,width:w,height:h,
+          original:'',translated:'',
+          fontSize:16,fontColor:'#1a1d23',fontFamily:'Arial',
+          bold:false,align:'center'
+        });
+        renderZones();renderZoneList();
+      }
+      drawing=null;
+    });
+
+    // Zone drag/resize (pan mode)
+    zonesContainer.addEventListener('mousedown',e=>{
+      if(currentMode!=='pan')return;
+      const zoneEl=e.target.closest('.zone-box');
+      if(!zoneEl)return;
+      if(e.target.classList.contains('zone-resize')){
+        const dir=e.target.dataset.dir;
+        const zid=parseInt(zoneEl.dataset.id);
+        const idx=zones.findIndex(z=>z.id===zid);
+        if(idx<0)return;
+        resizing={idx,dir,startX:e.clientX,startY:e.clientY,startW:zones[idx].width,startH:zones[idx].height,startL:zones[idx].left,startT:zones[idx].top};
+        e.preventDefault();e.stopPropagation();
+      }else{
+        const zid=parseInt(zoneEl.dataset.id);
+        const idx=zones.findIndex(z=>z.id===zid);
+        if(idx<0)return;
+        dragging={idx,startX:e.clientX,startY:e.clientY,startLeft:zones[idx].left,startTop:zones[idx].top};
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('mousemove',e=>{
+      if(dragging){
+        const dx=e.clientX-dragging.startX,dy=e.clientY-dragging.startY;
+        const imgW=editorWrap.clientWidth,imgH=mainImg.clientHeight;
+        zones[dragging.idx].left=Math.max(0,Math.min(dragging.startLeft+dx,imgW-zones[dragging.idx].width));
+        zones[dragging.idx].top=Math.max(0,Math.min(dragging.startTop+dy,imgH-zones[dragging.idx].height));
+        renderZones();
+      }
+      if(resizing){
+        const dx=e.clientX-resizing.startX,dy=e.clientY-resizing.startY;
+        const dir=resizing.dir;
+        let w=resizing.startW,h=resizing.startH,l=resizing.startL,t=resizing.startT;
+        if(dir.includes('e'))w=Math.max(30,resizing.startW+dx);
+        if(dir.includes('s'))h=Math.max(14,resizing.startH+dy);
+        if(dir.includes('w')){w=Math.max(30,resizing.startW-dx);l=resizing.startL+(resizing.startW-w);}
+        if(dir.includes('n')){h=Math.max(14,resizing.startH-dy);t=resizing.startT+(resizing.startH-h);}
+        zones[resizing.idx].width=w;zones[resizing.idx].height=h;
+        zones[resizing.idx].left=l;zones[resizing.idx].top=t;
+        renderZones();
+      }
+    });
+
+    document.addEventListener('mouseup',()=>{dragging=null;resizing=null;});
+
+    // Touch drag/resize
+    zonesContainer.addEventListener('touchstart',e=>{
+      if(currentMode!=='pan')return;
+      const zoneEl=e.target.closest('.zone-box');
+      if(!zoneEl)return;
+      const t=e.touches[0];
+      if(e.target.classList.contains('zone-resize')){
+        const dir=e.target.dataset.dir,zid=parseInt(zoneEl.dataset.id);
+        const idx=zones.findIndex(z=>z.id===zid);
+        if(idx<0)return;
+        resizing={idx,dir,startX:t.clientX,startY:t.clientY,startW:zones[idx].width,startH:zones[idx].height,startL:zones[idx].left,startT:zones[idx].top};
+        e.preventDefault();e.stopPropagation();
+      }else{
+        const zid=parseInt(zoneEl.dataset.id);
+        const idx=zones.findIndex(z=>z.id===zid);
+        if(idx<0)return;
+        dragging={idx,startX:t.clientX,startY:t.clientY,startLeft:zones[idx].left,startTop:zones[idx].top};
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('touchmove',e=>{
+      if(dragging){
+        const t=e.touches[0],dx=t.clientX-dragging.startX,dy=t.clientY-dragging.startY;
+        const imgW=editorWrap.clientWidth,imgH=mainImg.clientHeight;
+        zones[dragging.idx].left=Math.max(0,Math.min(dragging.startLeft+dx,imgW-zones[dragging.idx].width));
+        zones[dragging.idx].top=Math.max(0,Math.min(dragging.startTop+dy,imgH-zones[dragging.idx].height));
+        renderZones();
+      }
+      if(resizing){
+        const t=e.touches[0],dx=t.clientX-resizing.startX,dy=t.clientY-resizing.startY;
+        const dir=resizing.dir;
+        let w=resizing.startW,h=resizing.startH,l=resizing.startL,t2=resizing.startT;
+        if(dir.includes('e'))w=Math.max(30,resizing.startW+dx);
+        if(dir.includes('s'))h=Math.max(14,resizing.startH+dy);
+        if(dir.includes('w')){w=Math.max(30,resizing.startW-dx);l=resizing.startL+(resizing.startW-w);}
+        if(dir.includes('n')){h=Math.max(14,resizing.startH-dy);t2=resizing.startT+(resizing.startH-h);}
+        zones[resizing.idx].width=w;zones[resizing.idx].height=h;
+        zones[resizing.idx].left=l;zones[resizing.idx].top=t2;
+        renderZones();
+      }
+    });
+
+    document.addEventListener('touchend',()=>{dragging=null;resizing=null;});
+
+    function renderZones(){
+      zonesContainer.innerHTML='';
+      zones.forEach(z=>{
+        const el=document.createElement('div');
+        el.className='zone-box';
+        el.dataset.id=z.id;
+        el.style.cssText=`left:${z.left}px;top:${z.top}px;width:${z.width}px;height:${z.height}px;`;
+        el.innerHTML=`
+          <div class="zone-label">#${z.id}</div>
+          <div class="zone-resize" data-dir="nw" style="top:-5px;left:-5px;cursor:nw-resize;"></div>
+          <div class="zone-resize" data-dir="ne" style="top:-5px;right:-5px;cursor:ne-resize;"></div>
+          <div class="zone-resize" data-dir="sw" style="bottom:-5px;left:-5px;cursor:sw-resize;"></div>
+          <div class="zone-resize" data-dir="se" style="bottom:-5px;right:-5px;cursor:se-resize;"></div>
+        `;
+        zonesContainer.appendChild(el);
+      });
+    }
+
+    function renderZoneList(){
+      zoneList.innerHTML='';
+      zoneCount.textContent=zones.length;
+      zones.forEach((z,i)=>{
+        const item=document.createElement('div');
+        item.className='zone-item';
+        item.innerHTML=`
+          <div class="zi-header"><span class="zi-num">${z.id}</span><span style="font-size:0.8rem;color:var(--text-light);">Zone at (${Math.round(z.left)},${Math.round(z.top)}) ${Math.round(z.width)}x${Math.round(z.height)}</span><button class="btn btn-sm danger zi-delete" data-id="${z.id}">Delete</button></div>
+          <div class="zi-row"><label>Original:</label><input type="text" class="zi-orig" value="${escapeHtml(z.original)}" data-id="${z.id}" placeholder="Type original text here..."></div>
+          <div class="zi-row"><label>Translate:</label><input type="text" class="zi-trans" value="${escapeHtml(z.translated)}" data-id="${z.id}" placeholder="Type translated text..."><button class="btn btn-sm zi-auto" data-id="${z.id}">Auto</button></div>
+          <div class="zi-row">
+            <label>Font:</label><select class="zi-font" data-id="${z.id}">
+              <option value="Arial" ${z.fontFamily==='Arial'?'selected':''}>Arial</option>
+              <option value="Helvetica" ${z.fontFamily==='Helvetica'?'selected':''}>Helvetica</option>
+              <option value="Georgia" ${z.fontFamily==='Georgia'?'selected':''}>Georgia</option>
+              <option value="Impact" ${z.fontFamily==='Impact'?'selected':''}>Impact</option>
+              <option value="Verdana" ${z.fontFamily==='Verdana'?'selected':''}>Verdana</option>
+              <option value="Tahoma" ${z.fontFamily==='Tahoma'?'selected':''}>Tahoma</option>
+              <option value="Trebuchet MS" ${z.fontFamily==='Trebuchet MS'?'selected':''}>Trebuchet</option>
+              <option value="Courier New" ${z.fontFamily==='Courier New'?'selected':''}>Courier</option>
+              <option value="Times New Roman" ${z.fontFamily==='Times New Roman'?'selected':''}>Times</option>
+            </select>
+            <label>Size:</label><input type="number" class="zi-size" value="${z.fontSize}" min="8" max="200" data-id="${z.id}">
+            <label>Color:</label><input type="color" class="zi-color" value="${z.fontColor}" data-id="${z.id}">
+          </div>
+          <div class="zi-row">
+            <label>Bold:</label><input type="checkbox" class="zi-bold" data-id="${z.id}" ${z.bold?'checked':''}>
+            <label>Align:</label><select class="zi-align" data-id="${z.id}">
+              <option value="left" ${z.align==='left'?'selected':''}>Left</option>
+              <option value="center" ${z.align==='center'?'selected':''}>Center</option>
+              <option value="right" ${z.align==='right'?'selected':''}>Right</option>
+            </select>
+          </div>
+        `;
+        zoneList.appendChild(item);
+      });
+
+      // Bind events
+      zoneList.querySelectorAll('.zi-delete').forEach(b=>b.addEventListener('click',()=>{zones=zones.filter(z=>z.id!==parseInt(b.dataset.id));renderZones();renderZoneList();}));
+      zoneList.querySelectorAll('.zi-orig').forEach(inp=>inp.addEventListener('input',()=>updateZone(parseInt(inp.dataset.id),'original',inp.value)));
+      zoneList.querySelectorAll('.zi-trans').forEach(inp=>inp.addEventListener('input',()=>updateZone(parseInt(inp.dataset.id),'translated',inp.value)));
+      zoneList.querySelectorAll('.zi-font').forEach(sel=>sel.addEventListener('change',()=>updateZone(parseInt(sel.dataset.id),'fontFamily',sel.value)));
+      zoneList.querySelectorAll('.zi-size').forEach(inp=>inp.addEventListener('input',()=>updateZone(parseInt(inp.dataset.id),'fontSize',parseInt(inp.value)||16)));
+      zoneList.querySelectorAll('.zi-color').forEach(inp=>inp.addEventListener('input',()=>updateZone(parseInt(inp.dataset.id),'fontColor',inp.value)));
+      zoneList.querySelectorAll('.zi-bold').forEach(cb=>cb.addEventListener('change',()=>updateZone(parseInt(cb.dataset.id),'bold',cb.checked)));
+      zoneList.querySelectorAll('.zi-align').forEach(sel=>sel.addEventListener('change',()=>updateZone(parseInt(sel.dataset.id),'align',sel.value)));
+      zoneList.querySelectorAll('.zi-auto').forEach(b=>b.addEventListener('click',()=>autoTranslate(parseInt(b.dataset.id))));
+    }
+
+    function updateZone(id,key,val){
+      const idx=zones.findIndex(z=>z.id===id);
+      if(idx<0)return;
+      zones[idx][key]=val;
+    }
+
+    async function autoTranslate(id){
+      const idx=zones.findIndex(z=>z.id===id);
+      if(idx<0||!zones[idx].original.trim()){toast('Type original text first.');return;}
+      try{
+        const resp=await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(zones[idx].original)}&langpair=en|zh`);
+        const data=await resp.json();
+        if(data.responseData&&data.responseData.translatedText){
+          zones[idx].translated=data.responseData.translatedText;
+          renderZoneList();
+          toast('Translated! Edit if needed.');
+        }else{
+          toast('Translation failed. Type manually.');
+        }
+      }catch(e){
+        toast('Translation API unavailable. Type manually.');
+      }
+    }
+
+    function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+    // Apply translation to canvas
+    applyBtn.addEventListener('click',()=>{
+      const trueW=origImage.naturalWidth,trueH=origImage.naturalHeight;
+      const displayW=mainImg.clientWidth,displayH=mainImg.clientHeight;
+      const scale=trueW/displayW;
+
+      overlayCanvas.width=trueW;overlayCanvas.height=trueH;
+      overlayCanvas.style.width=displayW+'px';overlayCanvas.style.height=displayH+'px';
+      const ctx=overlayCanvas.getContext('2d');
+      ctx.clearRect(0,0,trueW,trueH);
+
+      zones.forEach(z=>{
+        const x=z.left*scale,y=z.top*scale,w=z.width*scale,h=z.height*scale;
+
+        // Erase original: sample surrounding colors for a gradient fill
+        const tempCanvas=document.createElement('canvas');
+        tempCanvas.width=trueW;tempCanvas.height=trueH;
+        const tempCtx=tempCanvas.getContext('2d');
+        tempCtx.drawImage(origImage,0,0);
+
+        // Sample edge colors and create smooth fill
+        const pad=Math.max(2,Math.round(Math.min(w,h)*0.15));
+        const colors=[];
+        // Top edge
+        for(let sx=x+pad;sx<x+w-pad;sx+=Math.max(1,Math.round(w/5))){
+          const py=Math.max(0,y-pad);
+          try{const p=tempCtx.getImageData(Math.round(sx),py,1,1).data;colors.push([p[0],p[1],p[2]]);}catch(e){}
+        }
+        // Bottom edge
+        for(let sx=x+pad;sx<x+w-pad;sx+=Math.max(1,Math.round(w/5))){
+          const py=Math.min(trueH-1,y+h+pad);
+          try{const p=tempCtx.getImageData(Math.round(sx),py,1,1).data;colors.push([p[0],p[1],p[2]]);}catch(e){}
+        }
+        // Left/right edges
+        for(let sy=y+pad;sy<y+h-pad;sy+=Math.max(1,Math.round(h/5))){
+          try{const p=tempCtx.getImageData(Math.max(0,Math.round(x-pad)),Math.round(sy),1,1).data;colors.push([p[0],p[1],p[2]]);}catch(e){}
+          try{const p=tempCtx.getImageData(Math.min(trueW-1,Math.round(x+w+pad)),Math.round(sy),1,1).data;colors.push([p[0],p[1],p[2]]);}catch(e){}
+        }
+
+        // Average color
+        let avg=[255,255,255];
+        if(colors.length>0){
+          avg=colors.reduce((a,c)=>[a[0]+c[0],a[1]+c[1],a[2]+c[2]],[0,0,0]).map(v=>Math.round(v/colors.length));
+        }
+
+        // Create gradient fill
+        const gradX=x+w/2,gradY=y+h/2;
+        const grad=ctx.createRadialGradient(gradX,gradY,0,gradX,gradY,Math.max(w,h)*0.8);
+        grad.addColorStop(0,`rgb(${avg[0]},${avg[1]},${avg[2]})`);
+        grad.addColorStop(0.6,`rgb(${Math.round(avg[0]*0.95)},${Math.round(avg[1]*0.95)},${Math.round(avg[2]*0.95)})`);
+        grad.addColorStop(1,`rgb(${Math.round(avg[0]*0.88)},${Math.round(avg[1]*0.88)},${Math.round(avg[2]*0.88)})`);
+        ctx.fillStyle=grad;
+        ctx.fillRect(x-pad,y-pad,w+pad*2,h+pad*2);
+
+        // Draw text
+        if(z.translated.trim()){
+          const fs=z.fontSize*scale;
+          ctx.fillStyle=z.fontColor;
+          ctx.font=`${z.bold?'bold ':''}${fs}px "${z.fontFamily}", sans-serif`;
+          ctx.textAlign=z.align;
+          ctx.textBaseline='middle';
+          const tx=z.align==='center'?x+w/2:z.align==='right'?x+w-4:x+4;
+          wrapText(ctx,z.translated,tx,y+h/2,w-8,fs*1.3);
+        }
+      });
+
+      toast('Preview applied!');
+    });
+
+    function wrapText(ctx,text,x,y,maxWidth,lineHeight){
+      const words=text.split(' ');
+      let line='',lines=[];
+      for(const w of words){
+        const test=line?line+' '+w:w;
+        if(ctx.measureText(test).width>maxWidth&&line){
+          lines.push(line);line=w;
+        }else{line=test;}
+      }
+      if(line)lines.push(line);
+      const startY=y-(lines.length-1)*lineHeight/2;
+      lines.forEach((l,i)=>ctx.fillText(l,x,startY+i*lineHeight));
+    }
+
+    // Download merged image
+    dlBtn.addEventListener('click',()=>{
+      const trueW=origImage.naturalWidth,trueH=origImage.naturalHeight;
+      const canvas=document.createElement('canvas');
+      canvas.width=trueW;canvas.height=trueH;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(origImage,0,0);
+      ctx.drawImage(overlayCanvas,0,0);
+      canvas.toBlob(b=>{
+        const u=URL.createObjectURL(b);
+        const a=document.createElement('a');a.href=u;a.download='translated-image.png';a.click();
+        toast('Downloaded!');
+      },'image/png');
+    });
+
+    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+  </script>
+</body>
+</html>
