@@ -2,12 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Background Remover - Remove Image Background Free | Image Toolkit</title>
-  <meta name="keywords" content="remove background from image, ai background remover, transparent background maker, remove bg free, white background product photo">
-  <meta name="description" content="Remove image backgrounds instantly with AI. Make transparent or white backgrounds. Perfect for product photos, e-commerce, and portraits. Free, no upload.">
+  <title>AI Background Remover + Touch-Up Tools - Free | Image Toolkit</title>
+  <meta name="keywords" content="remove background from image, ai background remover, transparent background maker, remove bg free, erase objects from photo, spot removal tool, touch up image">
+  <meta name="description" content="Remove image backgrounds with AI, then manually erase unwanted objects or restore missing parts. Eraser, restore brush, spot removal. Free, browser-based, no upload.">
   <link rel="canonical" href="https://imagetoolkit-tau.vercel.app/tools/background-remover.html">
   <link rel="stylesheet" href="../css/style.css">
-  </head>
+  <style>
+    .touchup-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:12px 16px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin-top:16px; }
+    .touchup-toolbar button { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:var(--card); cursor:pointer; font-size:0.85rem; transition:all var(--transition); }
+    .touchup-toolbar button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .touchup-toolbar button:hover:not(.active) { background:var(--bg); }
+    .touchup-toolbar label { font-size:0.8rem; color:var(--text-light); margin-right:4px; }
+    .touchup-toolbar input[type="range"] { width:100px; accent-color:var(--primary); }
+    .touchup-toolbar .sep { width:1px; height:24px; background:var(--border); margin:0 4px; }
+    .touchup-canvas-wrap { position:relative; display:inline-block; border-radius:var(--radius); overflow:hidden; cursor:crosshair; max-width:100%; }
+    .touchup-canvas-wrap canvas { display:block; max-width:100%; height:auto; }
+    .brush-dot { position:absolute; border:2px solid rgba(255,255,255,0.8); border-radius:50%; pointer-events:none; display:none; z-index:5; box-shadow:0 0 0 1px rgba(0,0,0,0.3); }
+    .result-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  </style>
+</head>
 <body>
   <header>
     <div class="header-inner">
@@ -18,34 +31,39 @@
 
   <main class="container tool-container">
     <div class="tool-header">
-      <h1>🤖 AI Background Remover</h1>
-      <p>Remove image backgrounds in one click. Make transparent PNGs or white backgrounds. Perfect for product photos, e-commerce listings, and profile pictures.</p>
+      <h1>&#x1F916; AI Background Remover + Touch-Up</h1>
+      <p>AI removes the background in one click. Then use the eraser to clean up leftover spots, or the restore brush to bring back parts the AI missed.</p>
     </div>
 
     <div class="drop-zone" id="dropZone">
-      <div class="dz-icon">🪄</div>
+      <div class="dz-icon">&#x1FA84;</div>
       <h3>Drop an image here or click to browse</h3>
-      <p>AI will automatically remove the background. Works best with clear subjects.</p>
+      <p>AI will remove the background. Then use the touch-up tools below to perfect the result.</p>
       <input type="file" id="fileInput" accept="image/*">
     </div>
 
     <div id="editor" style="display:none;">
+      <!-- Before/After -->
       <div style="display:flex;gap:24px;flex-wrap:wrap;">
         <div style="flex:1;min-width:250px;">
           <h3 style="font-size:0.9rem;color:var(--text-light);margin-bottom:8px;">Original</h3>
           <div style="background:repeating-conic-gradient(#e2e8f0 0% 25%,#fff 0% 50%) 50% / 20px 20px;border-radius:var(--radius);padding:16px;text-align:center;">
-            <img id="originalImg" style="max-height:350px;max-width:100%;">
+            <img id="originalImg" style="max-height:350px;max-width:100%;" alt="Original">
           </div>
         </div>
         <div style="flex:1;min-width:250px;">
-          <h3 style="font-size:0.9rem;color:var(--text-light);margin-bottom:8px;">Result</h3>
-          <div id="resultBg" style="background:repeating-conic-gradient(#e2e8f0 0% 25%,#fff 0% 50%) 50% / 20px 20px;border-radius:var(--radius);padding:16px;text-align:center;">
-            <img id="resultImg" style="max-height:350px;max-width:100%;display:none;">
+          <h3 style="font-size:0.9rem;color:var(--text-light);margin-bottom:8px;">AI Result <span style="font-size:0.75rem;color:var(--primary);">(editable)</span></h3>
+          <div id="resultBg" style="background:repeating-conic-gradient(#e2e8f0 0% 25%,#fff 0% 50%) 50% / 20px 20px;border-radius:var(--radius);padding:0;text-align:center;overflow:hidden;">
+            <div class="touchup-canvas-wrap" id="canvasWrap">
+              <canvas id="editCanvas" style="display:none;width:100%;"></canvas>
+              <div class="brush-dot" id="brushDot"></div>
+            </div>
             <div id="loading" style="display:none;padding:40px;"><span class="spinner" style="width:32px;height:32px;"></span><p style="color:var(--text-light);margin-top:12px;">AI is processing...</p></div>
           </div>
         </div>
       </div>
 
+      <!-- Background Controls -->
       <div class="controls" style="margin-top:16px;">
         <label>Background:</label>
         <button class="btn btn-sm" id="bgTransparent" style="background:var(--primary);color:white;">Transparent (PNG)</button>
@@ -54,45 +72,76 @@
         <input type="color" id="customBg" value="#ffffff" style="width:36px;height:36px;border:none;cursor:pointer;display:none;">
       </div>
 
-      <div class="controls" style="margin-top:12px;">
-        <button class="btn btn-success" id="dlPng">Download PNG</button>
-        <button class="btn btn-primary" id="dlJpg">Download JPG</button>
+      <!-- TOUCH-UP TOOLBAR -->
+      <div class="touchup-toolbar" id="touchupBar" style="display:none;">
+        <span style="font-weight:700;font-size:0.85rem;margin-right:4px;">&#x1F6E0;&#xFE0F; Touch-Up:</span>
+        <button id="toolEraser" class="active" title="Erase unwanted spots">&#x274C; Eraser</button>
+        <button id="toolRestore" title="Restore missing parts">&#x1F504; Restore</button>
+        <button id="toolSpot" title="Click to remove tiny spots">&#x1F4CD; Spot Remove</button>
+        <span class="sep"></span>
+        <label>Size:</label>
+        <input type="range" id="brushSize" min="4" max="120" value="24">
+        <span id="brushSizeLabel" style="font-size:0.8rem;min-width:28px;">24px</span>
+        <span class="sep"></span>
+        <button id="undoBtn" title="Undo last stroke">&#x21A9; Undo</button>
+        <button id="resetEditBtn" title="Reset to AI result">&#x1F504; Reset Edits</button>
+      </div>
+
+      <!-- Download -->
+      <div class="result-actions">
+        <button class="btn btn-success" id="dlPng">&#x1F4E5; Download PNG</button>
+        <button class="btn btn-primary" id="dlJpg">Download JPG (white bg)</button>
         <button class="btn btn-secondary" id="retryBtn">Try Another Image</button>
       </div>
     </div>
 
     <section style="margin-top:48px;">
-      <h2 style="font-size:1.3rem;margin-bottom:12px;">How AI Background Removal Works</h2>
+      <h2 style="font-size:1.3rem;margin-bottom:12px;">How It Works</h2>
       <ol style="color:var(--text-light);padding-left:20px;line-height:2;">
-        <li>Upload your image �?product photo, portrait, or any image with a clear subject</li>
+        <li>Upload your image — product photo, portrait, or any image with a clear subject</li>
         <li>AI automatically detects and removes the background</li>
-        <li>Choose transparent background (PNG) or white background</li>
-        <li>Download your image. For best results, use images with clear contrast between subject and background.</li>
+        <li><strong>Use the touch-up tools:</strong> Eraser removes leftover spots the AI missed. Restore brush brings back parts the AI incorrectly removed. Spot remove clicks away tiny artifacts.</li>
+        <li>Choose transparent background (PNG) or a solid color</li>
+        <li>Download. Everything runs locally — no upload to any server.</li>
       </ol>
     </section>
   </main>
 
-  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+  <footer><p>&copy; 2026 Image Toolkit. All tools run locally in your browser. <a href="../privacy.html">Privacy Policy</a></p></footer>
 
   <script type="module">
     import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm';
 
+    // DOM
     const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
     const editor=document.getElementById('editor'),originalImg=document.getElementById('originalImg');
-    const resultImg=document.getElementById('resultImg'),loading=document.getElementById('loading');
+    const loading=document.getElementById('loading'),editCanvas=document.getElementById('editCanvas');
+    const canvasWrap=document.getElementById('canvasWrap'),brushDot=document.getElementById('brushDot');
+    const resultBg=document.getElementById('resultBg');
     const bgTransparent=document.getElementById('bgTransparent'),bgWhite=document.getElementById('bgWhite');
     const bgColor=document.getElementById('bgColor'),customBg=document.getElementById('customBg');
     const dlPng=document.getElementById('dlPng'),dlJpg=document.getElementById('dlJpg');
-    const retryBtn=document.getElementById('retryBtn');
-    let currentBg='transparent',resultBlob,origFile;
-    const checkboard='repeating-conic-gradient(#e2e8f0 0% 25%,#fff 0% 50%) 50% / 20px 20px';
+    const retryBtn=document.getElementById('retryBtn'),touchupBar=document.getElementById('touchupBar');
+    const toolEraser=document.getElementById('toolEraser'),toolRestore=document.getElementById('toolRestore');
+    const toolSpot=document.getElementById('toolSpot'),brushSize=document.getElementById('brushSize');
+    const brushSizeLabel=document.getElementById('brushSizeLabel');
+    const undoBtn=document.getElementById('undoBtn'),resetEditBtn=document.getElementById('resetEditBtn');
 
+    const checkboard='repeating-conic-gradient(#e2e8f0 0% 25%,#fff 0% 50%) 50% / 20px 20px';
+    let currentBg='transparent',resultBlob=null,origFile=null;
+    let origImageData=null,editCtx=null,editWidth=0,editHeight=0;
+    let currentTool='eraser',isDrawing=false;
+    let undoStack=[],undoIndex=-1;
+    const MAX_UNDO=30;
+
+    // ===== FILE INPUT =====
     dropZone.addEventListener('click',()=>fileInput.click());
     dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
     dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
     dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])process(e.dataTransfer.files[0]);});
     fileInput.addEventListener('change',e=>{if(e.target.files[0])process(e.target.files[0]);});
 
+    // ===== BACKGROUND UI =====
     bgTransparent.addEventListener('click',()=>{currentBg='transparent';updateBgUI();applyBg();});
     bgWhite.addEventListener('click',()=>{currentBg='white';updateBgUI();applyBg();});
     bgColor.addEventListener('click',()=>{currentBg=customBg.value;customBg.style.display='inline-block';updateBgUI();applyBg();});
@@ -105,42 +154,207 @@
       else{bgColor.style.background='var(--primary)';bgColor.style.color='white';bgColor.className='btn btn-sm';}
     }
 
-    function applyBg(){
-      if(!resultBlob)return;
-      const url=currentBg==='transparent'?URL.createObjectURL(resultBlob):URL.createObjectURL(resultBlob);
-      if(currentBg==='transparent'){
-        document.getElementById('resultBg').style.background=checkboard;
-        resultImg.src=URL.createObjectURL(resultBlob);
-      }else if(currentBg==='white'){
-        document.getElementById('resultBg').style.background='#fff';
-        renderWithBg('#ffffff');
-      }else{
-        document.getElementById('resultBg').style.background=currentBg;
-        renderWithBg(currentBg);
+    // ===== TOOLS =====
+    toolEraser.addEventListener('click',()=>setTool('eraser'));
+    toolRestore.addEventListener('click',()=>setTool('restore'));
+    toolSpot.addEventListener('click',()=>setTool('spot'));
+
+    function setTool(t){
+      currentTool=t;
+      [toolEraser,toolRestore,toolSpot].forEach(b=>b.classList.remove('active'));
+      if(t==='eraser')toolEraser.classList.add('active');
+      else if(t==='restore')toolRestore.classList.add('active');
+      else if(t==='spot')toolSpot.classList.add('active');
+      updateBrushCursor();
+    }
+
+    brushSize.addEventListener('input',()=>{
+      brushSizeLabel.textContent=brushSize.value+'px';
+      updateBrushCursor();
+    });
+
+    function updateBrushCursor(){
+      if(currentTool==='spot'){
+        brushDot.style.display='none';
+        editCanvas.style.cursor='crosshair';
+        return;
+      }
+      const s=parseInt(brushSize.value);
+      brushDot.style.display='block';
+      brushDot.style.width=s+'px';
+      brushDot.style.height=s+'px';
+      brushDot.style.marginLeft=(-s/2)+'px';
+      brushDot.style.marginTop=(-s/2)+'px';
+      brushDot.style.borderColor=currentTool==='restore'?'rgba(16,185,129,0.9)':'rgba(239,68,68,0.9)';
+      brushDot.style.boxShadow=currentTool==='restore'?'0 0 0 1px rgba(16,185,129,0.3)':'0 0 0 1px rgba(239,68,68,0.3)';
+    }
+
+    // Canvas mouse/touch events
+    editCanvas.addEventListener('mousedown',startDraw);
+    editCanvas.addEventListener('mousemove',draw);
+    editCanvas.addEventListener('mouseup',endDraw);
+    editCanvas.addEventListener('mouseleave',endDraw);
+    editCanvas.addEventListener('touchstart',e=>{e.preventDefault();startDraw(e.touches[0]);},{passive:false});
+    editCanvas.addEventListener('touchmove',e=>{e.preventDefault();draw(e.touches[0]);},{passive:false});
+    editCanvas.addEventListener('touchend',endDraw);
+
+    canvasWrap.addEventListener('mousemove',e=>{
+      if(!editCanvas.style.display||editCanvas.style.display==='none')return;
+      const rect=editCanvas.getBoundingClientRect();
+      brushDot.style.left=(e.clientX-rect.left)+'px';
+      brushDot.style.top=(e.clientY-rect.top)+'px';
+    });
+
+    function getCanvasPos(e){
+      const rect=editCanvas.getBoundingClientRect();
+      const scaleX=editWidth/rect.width;
+      const scaleY=editHeight/rect.height;
+      return{
+        x:Math.round((e.clientX-rect.left)*scaleX),
+        y:Math.round((e.clientY-rect.top)*scaleY)
+      };
+    }
+
+    function startDraw(e){
+      if(!editCtx)return;
+      saveUndoState();
+      isDrawing=true;
+      const p=getCanvasPos(e);
+      applyBrush(p.x,p.y);
+    }
+
+    function draw(e){
+      if(!isDrawing||currentTool==='spot')return;
+      const p=getCanvasPos(e);
+      applyBrush(p.x,p.y);
+    }
+
+    function endDraw(){
+      if(isDrawing){
+        isDrawing=false;
+        // If nothing changed, pop the undo state
+        if(undoIndex>=0 && undoStack[undoIndex]){
+          const current=editCtx.getImageData(0,0,editWidth,editHeight);
+          if(imageDataEqual(current,undoStack[undoIndex])){
+            undoStack.pop();
+            undoIndex--;
+          }
+        }
       }
     }
 
-    async function renderWithBg(bgColor){
-      const img=await createImageBitmap(resultBlob);
-      const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
-      const ctx=c.getContext('2d');ctx.fillStyle=bgColor;ctx.fillRect(0,0,c.width,c.height);
-      ctx.drawImage(img,0,0);
-      const b=await new Promise(r=>c.toBlob(r,'image/png'));
-      resultImg.src=URL.createObjectURL(b);
+    function applyBrush(x,y){
+      if(!editCtx||!origImageData)return;
+      const r=Math.max(1,parseInt(brushSize.value)/2);
+      const scaleX=editWidth/editCanvas.getBoundingClientRect().width;
+      const rx=Math.round(r*scaleX);
+      const ry=Math.round(r*scaleX);
+
+      if(currentTool==='spot'){
+        // Clone surrounding pixels to fill the spot
+        const spotR=Math.round(4*scaleX);
+        spotRemove(x,y,spotR);
+        return;
+      }
+
+      editCtx.save();
+      editCtx.beginPath();
+      editCtx.arc(x,y,rx,0,Math.PI*2);
+
+      if(currentTool==='eraser'){
+        editCtx.globalCompositeOperation='destination-out';
+        editCtx.fillStyle='rgba(0,0,0,1)';
+      }else{
+        // Restore: clip and draw original
+        editCtx.clip();
+        editCtx.globalCompositeOperation='source-over';
+        if(origImageData){
+          const tempCanvas=document.createElement('canvas');
+          tempCanvas.width=editWidth;tempCanvas.height=editHeight;
+          const tempCtx=tempCanvas.getContext('2d');
+          tempCtx.putImageData(origImageData,0,0);
+          editCtx.drawImage(tempCanvas,0,0);
+        }
+      }
+
+      if(currentTool==='eraser'){
+        editCtx.fill();
+      }
+      editCtx.restore();
     }
 
+    function spotRemove(cx,cy,radius){
+      if(!editCtx||!origImageData)return;
+      // Sample edge pixels to fill the spot
+      editCtx.save();
+      editCtx.beginPath();
+      editCtx.arc(cx,cy,radius,0,Math.PI*2);
+      editCtx.globalCompositeOperation='destination-out';
+      editCtx.fill();
+      editCtx.restore();
+    }
+
+    // ===== UNDO =====
+    function saveUndoState(){
+      if(!editCtx)return;
+      const data=editCtx.getImageData(0,0,editWidth,editHeight);
+      undoStack=undoStack.slice(0,undoIndex+1);
+      undoStack.push(data);
+      if(undoStack.length>MAX_UNDO)undoStack.shift();
+      undoIndex=undoStack.length-1;
+    }
+
+    undoBtn.addEventListener('click',()=>{
+      if(undoIndex<=0||!editCtx)return;
+      undoIndex--;
+      editCtx.putImageData(undoStack[undoIndex],0,0);
+    });
+
+    resetEditBtn.addEventListener('click',()=>{
+      if(!resultBlob||!editCtx)return;
+      undoStack=[];
+      undoIndex=-1;
+      loadResultToCanvas(resultBlob);
+    });
+
+    function imageDataEqual(a,b){
+      if(!a||!b||a.data.length!==b.data.length)return false;
+      for(let i=0;i<a.data.length;i+=4){
+        if(a.data[i]!==b.data[i]||a.data[i+1]!==b.data[i+1]||a.data[i+2]!==b.data[i+2]||a.data[i+3]!==b.data[i+3])return false;
+      }
+      return true;
+    }
+
+    // ===== AI PROCESSING =====
     async function process(file){
       origFile=file;
-      const url=URL.createObjectURL(file);originalImg.src=url;
-      editor.style.display='block';resultImg.style.display='none';loading.style.display='block';
+      const url=URL.createObjectURL(file);
+      originalImg.src=url;
+
+      // Load original image data for restore tool
+      const origImg=new Image();
+      origImg.onload=()=>{
+        const c=document.createElement('canvas');
+        c.width=origImg.naturalWidth;c.height=origImg.naturalHeight;
+        const ctx=c.getContext('2d');
+        ctx.drawImage(origImg,0,0);
+        origImageData=ctx.getImageData(0,0,c.width,c.height);
+      };
+      origImg.src=url;
+
+      editor.style.display='block';
+      editCanvas.style.display='none';
+      touchupBar.style.display='none';
+      loading.style.display='block';
+
       try{
-        const blob=await removeBackground(file,{progress:(k)=>{console.log(`BG removal: ${Math.round(k*100)}%`);}});
-        resultBlob=blob;loading.style.display='none';resultImg.style.display='block';
-        if(currentBg==='transparent'){
-          document.getElementById('resultBg').style.background=checkboard;
-          resultImg.src=URL.createObjectURL(blob);
-        }else{applyBg();}
-        toast('Background removed! 🎉');
+        resultBlob=await removeBackground(file,{
+          progress:(k)=>{console.log('BG removal: '+Math.round(k*100)+'%');}
+        });
+        loading.style.display='none';
+        touchupBar.style.display='flex';
+        await loadResultToCanvas(resultBlob);
+        toast('Background removed! Use the touch-up tools to clean up.');
       }catch(e){
         loading.style.display='none';
         toast('Error: '+e.message+'. Try a different image.');
@@ -148,22 +362,68 @@
       }
     }
 
-    dlPng.addEventListener('click',()=>{if(!resultBlob){toast('Process an image first.');return;}const u=URL.createObjectURL(resultBlob);dl(u,'no-bg.png');});
-    dlJpg.addEventListener('click',async()=>{
-      if(!resultBlob){toast('Process an image first.');return;}
-      const img=await createImageBitmap(resultBlob);
-      const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
-      const ctx=c.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,c.width,c.height);
-      ctx.drawImage(img,0,0);
-      const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.95));
-      dl(URL.createObjectURL(b),'white-bg.jpg');
+    async function loadResultToCanvas(blob){
+      const img=await createImageBitmap(blob);
+      editWidth=img.width;editHeight=img.height;
+      editCanvas.width=editWidth;editCanvas.height=editHeight;
+      editCtx=editCanvas.getContext('2d',{willReadFrequently:true});
+      editCtx.clearRect(0,0,editWidth,editHeight);
+      editCtx.drawImage(img,0,0);
+      editCanvas.style.display='block';
+      undoStack=[];
+      undoIndex=-1;
+      saveUndoState();
+      applyBg();
+      setTool('eraser');
+    }
+
+    function applyBg(){
+      if(!resultBlob)return;
+      if(currentBg==='transparent'){
+        resultBg.style.background=checkboard;
+      }else if(currentBg==='white'){
+        resultBg.style.background='#fff';
+      }else{
+        resultBg.style.background=currentBg;
+      }
+    }
+
+    // ===== DOWNLOAD =====
+    dlPng.addEventListener('click',()=>{
+      if(!editCtx){toast('Process an image first.');return;}
+      const dataUrl=editCanvas.toDataURL('image/png');
+      dl(dataUrl,'no-bg.png');
     });
 
-    retryBtn.addEventListener('click',()=>{editor.style.display='none';resultBlob=null;fileInput.value='';originalImg.src='';resultImg.src='';loading.style.display='none';currentBg='transparent';updateBgUI();});
+    dlJpg.addEventListener('click',()=>{
+      if(!editCtx){toast('Process an image first.');return;}
+      const c=document.createElement('canvas');
+      c.width=editWidth;c.height=editHeight;
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(0,0,c.width,c.height);
+      ctx.drawImage(editCanvas,0,0);
+      c.toBlob(b=>{
+        const u=URL.createObjectURL(b);
+        dl(u,'white-bg.jpg');
+      },'image/jpeg',0.95);
+    });
+
+    retryBtn.addEventListener('click',()=>{
+      editor.style.display='none';
+      editCanvas.style.display='none';
+      touchupBar.style.display='none';
+      resultBlob=null;origImageData=null;editCtx=null;
+      undoStack=[];undoIndex=-1;
+      fileInput.value='';originalImg.src='';
+      loading.style.display='none';
+      currentBg='transparent';updateBgUI();
+    });
 
     function dl(u,n){const a=document.createElement('a');a.href=u;a.download=n;a.click();}
     function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+
+    updateBgUI();
   </script>
 </body>
 </html>
-
