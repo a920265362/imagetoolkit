@@ -295,7 +295,7 @@
       const s=displayScale,color=DIM_COLORS[d.dim],name=DIM_NAMES[d.dim];
       const fs=parseInt(textSize.value);
       const pxDist=d.end-d.pos;
-      const real=(pxDist/displayScale)/parseFloat(scalePx.value||100)*parseFloat(scaleVal.value||10);
+      const real=d.customVal!=null?d.customVal:(pxDist/displayScale)/parseFloat(scalePx.value||100)*parseFloat(scaleVal.value||10);
       const label=name+': '+real.toFixed(1)+' '+scaleUnit.value;
 
       ctx.save();
@@ -369,19 +369,41 @@
       dimList.innerHTML='';dimCount.textContent=dims.length;
       const spx=parseFloat(scalePx.value)||100,sv=parseFloat(scaleVal.value)||10,unit=scaleUnit.value;
       dims.forEach((d,i)=>{
-        const pxDist=d.end-d.pos,real=(pxDist/displayScale)/spx*sv;
+        const pxDist=d.end-d.pos;
+        // Use custom value if set, otherwise auto-calculate
+        const real=d.customVal!=null?d.customVal:(pxDist/displayScale)/spx*sv;
         const div=document.createElement('div');div.className='dim-item';
         div.innerHTML=`
           <span class="d-color" style="background:${DIM_COLORS[d.dim]};"></span>
           <span class="d-label">${DIM_NAMES[d.dim]}</span>
           <span class="d-px">${Math.round(pxDist/displayScale)} px</span>
-          <span class="d-val">${real.toFixed(1)} ${unit}</span>
+          <input class="d-val-input" data-i="${i}" value="${real.toFixed(1)}" style="width:64px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;font-weight:700;text-align:right;background:var(--bg);">
+          <span style="font-weight:700;font-size:0.85rem;">${unit}</span>
+          ${d.customVal!=null?`<button class="d-reset" data-i="${i}" title="Reset to auto" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:0.75rem;padding:0;">&#x21A9;</button>`:''}
           <button class="d-del" data-i="${i}">&#x2715;</button>
         `;
         dimList.appendChild(div);
       });
+      // Edit handlers
+      dimList.querySelectorAll('.d-val-input').forEach(inp=>{
+        inp.addEventListener('input',()=>{
+          const i=parseInt(inp.dataset.i);
+          const v=parseFloat(inp.value);
+          if(!isNaN(v)){dims[i].customVal=v;redrawAll();}
+        });
+        inp.addEventListener('change',()=>{
+          const i=parseInt(inp.dataset.i);
+          const v=parseFloat(inp.value);
+          if(isNaN(v)||v<=0){inp.value=dims[i].customVal!=null?dims[i].customVal:1;return;}
+          dims[i].customVal=v;redrawAll();renderList();
+        });
+      });
       dimList.querySelectorAll('.d-del').forEach(b=>b.addEventListener('click',()=>{
         dims.splice(parseInt(b.dataset.i),1);redrawAll();renderList();
+      }));
+      dimList.querySelectorAll('.d-reset').forEach(b=>b.addEventListener('click',()=>{
+        const i=parseInt(b.dataset.i);
+        delete dims[i].customVal;redrawAll();renderList();
       }));
     }
 
