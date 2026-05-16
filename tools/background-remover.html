@@ -79,6 +79,14 @@
         <button id="toolRestore" title="Restore missing parts">&#x1F504; Restore</button>
         <button id="toolSpot" title="Click to remove tiny spots">&#x1F4CD; Spot Remove</button>
         <button id="toolMove" title="Move/reposition the subject">&#x2702;&#xFE0F; Move</button>
+        <button id="toolResize" title="Resize/scale the subject">&#x2194;&#xFE0F; Resize</button>
+        <span class="sep"></span>
+        <label>W:</label>
+        <input type="number" id="resizeW" style="width:64px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;" min="1" disabled>
+        <span style="font-size:0.75rem;color:var(--text-light);">&#x1F517;</span>
+        <label>H:</label>
+        <input type="number" id="resizeH" style="width:64px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;" min="1" disabled>
+        <button id="resizeApply" style="display:none;padding:6px 12px;border-radius:6px;border:1px solid var(--primary);background:var(--primary);color:#fff;cursor:pointer;font-size:0.8rem;">Apply</button>
         <span class="sep"></span>
         <label>Size:</label>
         <input type="range" id="brushSize" min="4" max="120" value="24">
@@ -125,9 +133,12 @@
     const retryBtn=document.getElementById('retryBtn'),touchupBar=document.getElementById('touchupBar');
     const toolEraser=document.getElementById('toolEraser'),toolRestore=document.getElementById('toolRestore');
     const toolSpot=document.getElementById('toolSpot'),toolMove=document.getElementById('toolMove');
+    const toolResize=document.getElementById('toolResize');
     const brushSize=document.getElementById('brushSize');
     const brushSizeLabel=document.getElementById('brushSizeLabel');
     const undoBtn=document.getElementById('undoBtn'),resetEditBtn=document.getElementById('resetEditBtn');
+    const resizeW=document.getElementById('resizeW'),resizeH=document.getElementById('resizeH');
+    const resizeApply=document.getElementById('resizeApply');
 
     const checkboard='repeating-conic-gradient(#e2e8f0 0% 25%,#fff 0% 50%) 50% / 20px 20px';
     let currentBg='transparent',resultBlob=null,origFile=null;
@@ -137,6 +148,7 @@
     const MAX_UNDO=30;
     let moveOffsetX=0,moveOffsetY=0,isMoving=false,moveStartX=0,moveStartY=0;
     let baseCanvas=null,baseCtx=null;
+    let resizeScale=1,isResizing=false,resizeCorner=null,resizeStart={};
 
     // ===== FILE INPUT =====
     dropZone.addEventListener('click',()=>fileInput.click());
@@ -163,16 +175,21 @@
     toolRestore.addEventListener('click',()=>setTool('restore'));
     toolSpot.addEventListener('click',()=>setTool('spot'));
     toolMove.addEventListener('click',()=>setTool('move'));
+    toolResize.addEventListener('click',()=>setTool('resize'));
 
     function setTool(t){
-      // Commit pending move before switching tools
+      // Commit pending changes before switching
       if(currentTool==='move'&&(moveOffsetX||moveOffsetY))commitMove();
+      if(currentTool==='resize')commitResize();
       currentTool=t;
-      [toolEraser,toolRestore,toolSpot,toolMove].forEach(b=>b.classList.remove('active'));
+      [toolEraser,toolRestore,toolSpot,toolMove,toolResize].forEach(b=>b.classList.remove('active'));
       if(t==='eraser')toolEraser.classList.add('active');
       else if(t==='restore')toolRestore.classList.add('active');
       else if(t==='spot')toolSpot.classList.add('active');
       else if(t==='move')toolMove.classList.add('active');
+      else if(t==='resize'){toolResize.classList.add('active');enterResizeMode();}
+      else exitResizeMode();
+      if(t!=='resize')exitResizeMode();
       updateBrushCursor();
     }
 
@@ -182,6 +199,11 @@
     });
 
     function updateBrushCursor(){
+      if(currentTool==='resize'){
+        brushDot.style.display='none';
+        editCanvas.style.cursor='nwse-resize';
+        return;
+      }
       if(currentTool==='move'){
         brushDot.style.display='none';
         editCanvas.style.cursor='grab';
@@ -203,13 +225,13 @@
     }
 
     // Canvas mouse/touch events
-    editCanvas.addEventListener('mousedown',e=>{if(currentTool==='move')startMove(e);else startDraw(e);});
-    editCanvas.addEventListener('mousemove',e=>{if(currentTool==='move')doMove(e);else draw(e);});
-    editCanvas.addEventListener('mouseup',e=>{if(currentTool==='move')endMove();else endDraw();});
-    editCanvas.addEventListener('mouseleave',()=>{if(currentTool==='move')endMove();else endDraw();});
-    editCanvas.addEventListener('touchstart',e=>{e.preventDefault();if(currentTool==='move')startMove(e.touches[0]);else startDraw(e.touches[0]);},{passive:false});
-    editCanvas.addEventListener('touchmove',e=>{e.preventDefault();if(currentTool==='move')doMove(e.touches[0]);else draw(e.touches[0]);},{passive:false});
-    editCanvas.addEventListener('touchend',()=>{if(currentTool==='move')endMove();else endDraw();});
+    editCanvas.addEventListener('mousedown',e=>{if(currentTool==='move')startMove(e);else if(currentTool==='resize')startResizeDrag(e);else startDraw(e);});
+    editCanvas.addEventListener('mousemove',e=>{if(currentTool==='move')doMove(e);else if(currentTool==='resize')doResizeDrag(e);else draw(e);});
+    editCanvas.addEventListener('mouseup',e=>{if(currentTool==='move')endMove();else if(currentTool==='resize')endResizeDrag();else endDraw();});
+    editCanvas.addEventListener('mouseleave',()=>{if(currentTool==='move')endMove();else if(currentTool==='resize')endResizeDrag();else endDraw();});
+    editCanvas.addEventListener('touchstart',e=>{e.preventDefault();if(currentTool==='move')startMove(e.touches[0]);else if(currentTool==='resize')startResizeDrag(e.touches[0]);else startDraw(e.touches[0]);},{passive:false});
+    editCanvas.addEventListener('touchmove',e=>{e.preventDefault();if(currentTool==='move')doMove(e.touches[0]);else if(currentTool==='resize')doResizeDrag(e.touches[0]);else draw(e.touches[0]);},{passive:false});
+    editCanvas.addEventListener('touchend',()=>{if(currentTool==='move')endMove();else if(currentTool==='resize')endResizeDrag();else endDraw();});
 
     canvasWrap.addEventListener('mousemove',e=>{
       if(!editCanvas.style.display||editCanvas.style.display==='none')return;
@@ -323,6 +345,117 @@
       baseCtx.drawImage(editCanvas,0,0);
       moveOffsetX=0;moveOffsetY=0;
     }
+
+    // ===== RESIZE TOOL =====
+    function enterResizeMode(){
+      initBaseCanvas();
+      resizeScale=1;
+      resizeW.disabled=false;resizeH.disabled=false;resizeApply.style.display='inline-block';
+      resizeW.value=editWidth;resizeH.value=editHeight;
+      drawResizeHandles();
+    }
+
+    function exitResizeMode(){
+      resizeW.disabled=true;resizeH.disabled=true;resizeApply.style.display='none';
+      if(currentTool==='resize')return;
+    }
+
+    function drawResizeHandles(){
+      if(!editCtx||currentTool!=='resize')return;
+      const s=resizeScale;
+      const w=Math.round(editWidth*s),h=Math.round(editHeight*s);
+      const x=Math.round((editWidth-w)/2),y=Math.round((editHeight-h)/2);
+      const hs=8;
+      const corners=[[x,y],[x+w,y],[x,y+h],[x+w,y+h]];
+      editCtx.save();
+      editCtx.fillStyle='#4f46e5';editCtx.strokeStyle='#fff';editCtx.lineWidth=2;
+      corners.forEach(([cx,cy])=>{
+        editCtx.fillRect(cx-hs,cy-hs,hs*2,hs*2);
+        editCtx.strokeRect(cx-hs,cy-hs,hs*2,hs*2);
+      });
+      editCtx.strokeStyle='#4f46e5';editCtx.lineWidth=2;editCtx.setLineDash([6,4]);
+      editCtx.strokeRect(x,y,w,h);
+      editCtx.setLineDash([]);
+      editCtx.restore();
+    }
+
+    function rerenderWithSize(w,h){
+      if(!editCtx||!baseCanvas)return;
+      if(currentBg==='transparent'){
+        const gs=16;
+        for(let y=0;y<editHeight;y+=gs){
+          for(let x=0;x<editWidth;x+=gs){
+            editCtx.fillStyle=((x/gs+y/gs)%2===0)?'#e2e8f0':'#fff';
+            editCtx.fillRect(x,y,gs,gs);
+          }
+        }
+      }else if(currentBg==='white'){
+        editCtx.fillStyle='#ffffff';editCtx.fillRect(0,0,editWidth,editHeight);
+      }else{
+        editCtx.fillStyle=currentBg;editCtx.fillRect(0,0,editWidth,editHeight);
+      }
+      const dx=Math.round((editWidth-w)/2),dy=Math.round((editHeight-h)/2);
+      editCtx.drawImage(baseCanvas,dx,dy,w,h);
+    }
+
+    function startResizeDrag(e){
+      if(!baseCanvas)return;
+      const {sx,sy}=getScale();
+      resizeStart={mx:e.clientX*sx,my:e.clientY*sy,scale:resizeScale};
+      isResizing=true;
+    }
+
+    function doResizeDrag(e){
+      if(!isResizing||!baseCanvas)return;
+      const {sx,sy}=getScale();
+      const mx=e.clientX*sx,my=e.clientY*sy;
+      const dx=mx-resizeStart.mx,dy=my-resizeStart.my;
+      const avgD=(dx+dy)/2;
+      const minDim=Math.min(editWidth,editHeight);
+      resizeScale=Math.max(0.1,Math.min(5,resizeStart.scale+avgD/minDim));
+      const w=Math.round(editWidth*resizeScale),h=Math.round(editHeight*resizeScale);
+      resizeW.value=w;resizeH.value=h;
+      editCtx.clearRect(0,0,editWidth,editHeight);
+      rerenderWithSize(w,h);
+      drawResizeHandles();
+    }
+
+    function endResizeDrag(){isResizing=false;}
+
+    function commitResize(){
+      if(!editCtx||!baseCanvas||resizeScale===1)return;
+      saveUndoState();
+      const w=Math.round(editWidth*resizeScale),h=Math.round(editHeight*resizeScale);
+      rerenderWithSize(w,h);
+      baseCtx.clearRect(0,0,editWidth,editHeight);
+      baseCtx.drawImage(editCanvas,0,0);
+      resizeScale=1;
+      resizeW.value=editWidth;resizeH.value=editHeight;
+    }
+
+    resizeW.addEventListener('input',()=>{
+      if(!baseCanvas||currentTool!=='resize')return;
+      const w=parseInt(resizeW.value)||editWidth;
+      const ratio=editHeight/editWidth;
+      resizeH.value=Math.round(w*ratio);
+      resizeScale=w/editWidth;
+      editCtx.clearRect(0,0,editWidth,editHeight);
+      rerenderWithSize(w,Math.round(w*ratio));
+      drawResizeHandles();
+    });
+
+    resizeH.addEventListener('input',()=>{
+      if(!baseCanvas||currentTool!=='resize')return;
+      const h=parseInt(resizeH.value)||editHeight;
+      const ratio=editWidth/editHeight;
+      resizeW.value=Math.round(h*ratio);
+      resizeScale=h/editHeight;
+      editCtx.clearRect(0,0,editWidth,editHeight);
+      rerenderWithSize(Math.round(h*ratio),h);
+      drawResizeHandles();
+    });
+
+    resizeApply.addEventListener('click',()=>{commitResize();setTool('move');});
 
     function applyBrush(x,y){
       if(!editCtx||!origImageData)return;
@@ -454,6 +587,7 @@
       undoStack=[];
       undoIndex=-1;
       moveOffsetX=0;moveOffsetY=0;baseCanvas=null;baseCtx=null;
+      resizeScale=1;resizeW.value=editWidth;resizeH.value=editHeight;
       saveUndoState();
       applyBg();
       setTool('eraser');
@@ -496,7 +630,7 @@
       editCanvas.style.display='none';
       touchupBar.style.display='none';
       resultBlob=null;origImageData=null;editCtx=null;
-      undoStack=[];undoIndex=-1;moveOffsetX=0;moveOffsetY=0;baseCanvas=null;baseCtx=null;
+      undoStack=[];undoIndex=-1;moveOffsetX=0;moveOffsetY=0;baseCanvas=null;baseCtx=null;resizeScale=1;
       fileInput.value='';originalImg.src='';
       loading.style.display='none';
       currentBg='transparent';updateBgUI();
