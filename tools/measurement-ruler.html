@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Measurement Ruler - Mark Dimensions on Images | Image Toolkit</title>
+  <meta name="keywords" content="product measurement tool, ruler on image, mark dimensions photo, length width height image, ecommerce product dimensions, measure tool">
+  <meta name="description" content="Add measurement lines and dimension labels to product images. Mark length, width, height with arrows and custom units. Perfect for e-commerce product listings. Free, browser-based.">
+  <link rel="canonical" href="https://imagetoolkit-tau.vercel.app/tools/measurement-ruler.html">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .ruler-wrap { position:relative; display:inline-block; max-width:100%; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .ruler-wrap img { display:block; max-width:100%; }
+    .ruler-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:12px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:12px; }
+    .ruler-toolbar button { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:var(--card); cursor:pointer; font-size:0.85rem; }
+    .ruler-toolbar button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .ruler-toolbar label { font-size:0.8rem; font-weight:600; color:var(--text-light); }
+    .ruler-toolbar input[type="number"] { width:70px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; }
+    .ruler-toolbar select { padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; }
+    .ruler-toolbar input[type="color"] { width:32px; height:30px; border:1px solid var(--border); border-radius:4px; cursor:pointer; padding:2px; }
+    .measure-list { margin-top:12px; }
+    .measure-item { display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--card); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; font-size:0.85rem; }
+    .measure-item .m-color { width:16px; height:16px; border-radius:3px; flex-shrink:0; border:1px solid rgba(0,0,0,0.1); }
+    .measure-item .m-desc { flex:1; color:var(--text); }
+    .measure-item .m-px { color:var(--text-light); font-family:monospace; font-size:0.8rem; }
+    .measure-item button { background:none; border:none; color:var(--danger); cursor:pointer; font-size:0.85rem; padding:2px 6px; }
+    .helper-line { position:absolute; border:1px dashed rgba(99,102,241,0.6); pointer-events:none; z-index:5; display:none; }
+    .helper-line.h { border-top-width:1px; left:0; right:0; }
+    .helper-line.v { border-left-width:1px; top:0; bottom:0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="../index.html" class="logo"><svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="#4f46e5"/><path d="M8 22V10l8 6-8 6zM16 22V10l8 6-8 6z" fill="white"/></svg>Image Toolkit</a>
+      <nav><a href="../index.html">Home</a><a href="background-remover.html">AI BG</a><a href="image-cropper.html">Crop</a><a href="image-translator.html">Translate</a><a href="image-compressor.html">Compress</a><a href="meme-generator.html">Meme</a></nav>
+    </div>
+  </header>
+
+  <main class="container tool-container">
+    <div class="tool-header">
+      <h1>&#x1F4CF; Product Measurement Ruler</h1>
+      <p>Draw dimension lines on product images. Mark length, width, height with arrows, labels, and real-world units. Set scale to convert pixels to cm/inch.</p>
+    </div>
+
+    <div class="drop-zone" id="dropZone" style="position:relative;">
+      <div class="dz-icon">&#x1F4CF;</div>
+      <h3>Drop a product image here or click to browse</h3>
+      <p>Then draw measurement lines to mark dimensions</p>
+      <input type="file" id="fileInput" accept="image/*" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer;">
+    </div>
+
+    <div id="editor" style="display:none;">
+
+      <!-- Toolbar -->
+      <div class="ruler-toolbar">
+        <label>Mode:</label>
+        <button id="modeLength" class="active" title="Draw a horizontal measurement">&#x2194;&#xFE0F; Length</button>
+        <button id="modeHeight" title="Draw a vertical measurement">&#x2195;&#xFE0F; Height</button>
+        <button id="modeAngle" title="Draw a diagonal measurement">&#x2197;&#xFE0F; Diagonal</button>
+        <span style="width:1px;height:24px;background:var(--border);margin:0 4px;"></span>
+        <label>Scale:</label>
+        <input type="number" id="scalePx" value="100" min="1" style="width:60px;"> px =
+        <input type="number" id="scaleVal" value="10" min="0.1" step="0.1" style="width:60px;">
+        <select id="scaleUnit">
+          <option value="cm">cm</option>
+          <option value="inch">inch</option>
+          <option value="mm">mm</option>
+          <option value="ft">ft</option>
+        </select>
+        <span style="width:1px;height:24px;background:var(--border);margin:0 4px;"></span>
+        <label>Color:</label>
+        <input type="color" id="lineColor" value="#ef4444">
+        <label>Size:</label>
+        <input type="number" id="textSize" value="18" min="8" max="72" style="width:55px;">px
+        <span style="width:1px;height:24px;background:var(--border);margin:0 4px;"></span>
+        <button id="undoMeasure">&#x21A9; Undo</button>
+        <button id="clearAll">&#x1F5D1; Clear All</button>
+      </div>
+
+      <!-- Canvas area -->
+      <div style="display:flex;gap:20px;flex-wrap:wrap;">
+        <div class="ruler-wrap" id="rulerWrap" style="flex:2;min-width:320px;">
+          <img id="mainImg" alt="Product image" style="display:block;max-width:100%;">
+          <canvas id="drawCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+          <div class="helper-line h" id="hline"></div>
+          <div class="helper-line v" id="vline"></div>
+        </div>
+
+        <div style="flex:1;min-width:260px;">
+          <h3 style="font-size:0.95rem;margin-bottom:8px;">&#x1F4CF; Measurements (<span id="mCount">0</span>)</h3>
+          <p style="color:var(--text-light);font-size:0.8rem;margin-bottom:10px;">Click two points on the image to draw a dimension line.</p>
+          <div class="measure-list" id="measureList"></div>
+          <div class="controls" style="margin-top:12px;">
+            <button class="btn btn-success" id="dlBtn">&#x1F4E5; Download Image with Measurements</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section style="margin-top:48px;">
+      <h2 style="font-size:1.3rem;margin-bottom:12px;">How to Use</h2>
+      <ol style="color:var(--text-light);padding-left:20px;line-height:2;">
+        <li><strong>Upload</strong> a product photo</li>
+        <li><strong>Set scale</strong> — e.g., 100 pixels = 10 cm (measure a known reference on the photo)</li>
+        <li><strong>Choose mode</strong> — Length (horizontal), Height (vertical), or Diagonal</li>
+        <li><strong>Click two points</strong> on the image to draw the dimension line with arrows and label</li>
+        <li><strong>Adjust</strong> color, text size, or undo mistakes</li>
+        <li><strong>Download</strong> the final image. Perfect for Amazon, shop listings, spec sheets.</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer><p>&copy; 2026 Image Toolkit. <a href="../privacy.html">Privacy Policy</a></p></footer>
+
+  <script>
+    const dropZone=document.getElementById('dropZone'),fileInput=document.getElementById('fileInput');
+    const editor=document.getElementById('editor'),mainImg=document.getElementById('mainImg');
+    const drawCanvas=document.getElementById('drawCanvas'),rulerWrap=document.getElementById('rulerWrap');
+    const hline=document.getElementById('hline'),vline=document.getElementById('vline');
+    const measureList=document.getElementById('measureList'),mCount=document.getElementById('mCount');
+    const modeLength=document.getElementById('modeLength'),modeHeight=document.getElementById('modeHeight'),modeAngle=document.getElementById('modeAngle');
+    const scalePx=document.getElementById('scalePx'),scaleVal=document.getElementById('scaleVal'),scaleUnit=document.getElementById('scaleUnit');
+    const lineColor=document.getElementById('lineColor'),textSize=document.getElementById('textSize');
+    const undoMeasure=document.getElementById('undoMeasure'),clearAll=document.getElementById('clearAll'),dlBtn=document.getElementById('dlBtn');
+
+    let measures=[],currentMode='length',origImage=null,displayScale=1;
+    let clickPoints=[],isDrawing=false;
+    let mouseX=0,mouseY=0;
+
+    // Upload
+    dropZone.addEventListener('click',()=>fileInput.click());
+    dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+    dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])loadImage(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',e=>{if(e.target.files[0])loadImage(e.target.files[0]);});
+
+    function loadImage(file){
+      const url=URL.createObjectURL(file);
+      mainImg.onload=()=>{
+        origImage=mainImg;
+        displayScale=mainImg.naturalWidth/mainImg.clientWidth;
+        editor.style.display='block';
+        measures=[];clickPoints=[];
+        resizeCanvas();
+        redrawAll();
+        renderMeasureList();
+      };
+      mainImg.src=url;
+    }
+
+    function resizeCanvas(){
+      drawCanvas.width=mainImg.naturalWidth;
+      drawCanvas.height=mainImg.naturalHeight;
+      drawCanvas.style.width=mainImg.clientWidth+'px';
+      drawCanvas.style.height=mainImg.clientHeight+'px';
+    }
+
+    window.addEventListener('resize',()=>{if(origImage){resizeCanvas();redrawAll();}});
+
+    // Mode switching
+    modeLength.addEventListener('click',()=>{currentMode='length';setActiveMode(modeLength);clickPoints=[];clearHelpers();});
+    modeHeight.addEventListener('click',()=>{currentMode='height';setActiveMode(modeHeight);clickPoints=[];clearHelpers();});
+    modeAngle.addEventListener('click',()=>{currentMode='angle';setActiveMode(modeAngle);clickPoints=[];clearHelpers();});
+
+    function setActiveMode(btn){
+      [modeLength,modeHeight,modeAngle].forEach(b=>{b.classList.remove('active');b.style.background='';b.style.color='';});
+      btn.classList.add('active');
+      btn.style.background='var(--primary)';btn.style.color='#fff';
+    }
+
+    // Mouse/touch drawing on the img+canvas
+    rulerWrap.addEventListener('mousemove',e=>{
+      const rect=rulerWrap.getBoundingClientRect();
+      mouseX=e.clientX-rect.left;mouseY=e.clientY-rect.top;
+      if(currentMode==='height'){hline.style.display='block';hline.style.top=mouseY+'px';vline.style.display='none';}
+      else if(currentMode==='length'){vline.style.display='block';vline.style.left=mouseX+'px';hline.style.display='none';}
+      else{hline.style.display='none';vline.style.display='none';}
+      if(clickPoints.length===1){
+        const p=clickPoints[0];
+        const ctx=drawCanvas.getContext('2d');
+        redrawAll();
+        ctx.strokeStyle=lineColor.value;ctx.lineWidth=2;ctx.setLineDash([6,4]);
+        ctx.beginPath();ctx.moveTo(p.x*displayScale,p.y*displayScale);
+        ctx.lineTo(mouseX*displayScale,mouseY*displayScale);ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
+
+    rulerWrap.addEventListener('mouseleave',()=>{clearHelpers();});
+
+    rulerWrap.addEventListener('click',e=>{
+      const rect=rulerWrap.getBoundingClientRect();
+      const x=e.clientX-rect.left,y=e.clientY-rect.top;
+      addPoint(x,y);
+    });
+
+    // Touch
+    rulerWrap.addEventListener('touchmove',e=>{
+      e.preventDefault();
+      const t=e.touches[0],rect=rulerWrap.getBoundingClientRect();
+      mouseX=t.clientX-rect.left;mouseY=t.clientY-rect.top;
+      if(currentMode==='height'){hline.style.display='block';hline.style.top=mouseY+'px';vline.style.display='none';}
+      else if(currentMode==='length'){vline.style.display='block';vline.style.left=mouseX+'px';hline.style.display='none';}
+      if(clickPoints.length===1){
+        const p=clickPoints[0],ctx=drawCanvas.getContext('2d');
+        redrawAll();
+        ctx.strokeStyle=lineColor.value;ctx.lineWidth=2;ctx.setLineDash([6,4]);
+        ctx.beginPath();ctx.moveTo(p.x*displayScale,p.y*displayScale);
+        ctx.lineTo(mouseX*displayScale,mouseY*displayScale);ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    },{passive:false});
+
+    rulerWrap.addEventListener('touchend',e=>{
+      e.preventDefault();
+      const t=e.changedTouches[0],rect=rulerWrap.getBoundingClientRect();
+      const x=t.clientX-rect.left,y=t.clientY-rect.top;
+      addPoint(x,y);
+    });
+
+    function addPoint(x,y){
+      clickPoints.push({x,y});
+      if(clickPoints.length===2){
+        const p1=clickPoints[0],p2=clickPoints[1];
+        // Snap based on mode
+        let x1=p1.x,y1=p1.y,x2=p2.x,y2=p2.y;
+        if(currentMode==='length'){y2=y1;}
+        else if(currentMode==='height'){x2=x1;}
+
+        measures.push({x1,y1,x2,y2,color:lineColor.value,fontSize:parseInt(textSize.value),mode:currentMode});
+        clickPoints=[];
+        redrawAll();renderMeasureList();
+      }
+    }
+
+    function clearHelpers(){hline.style.display='none';vline.style.display='none';}
+
+    function redrawAll(){
+      const ctx=drawCanvas.getContext('2d');
+      ctx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+      measures.forEach(m=>drawMeasure(ctx,m));
+    }
+
+    function drawMeasure(ctx,m){
+      const s=displayScale;
+      const x1=m.x1*s,y1=m.y1*s,x2=m.x2*s,y2=m.y2*s;
+      const dx=x2-x1,dy=y2-y1;
+      const len=Math.sqrt(dx*dx+dy*dy);
+      if(len<5)return;
+      const ux=dx/len,uy=dy/len;
+      const nx=-uy,ny=ux;
+
+      // Main line
+      ctx.strokeStyle=m.color;ctx.lineWidth=2;ctx.setLineDash([]);
+      const gap=16*s;
+      ctx.beginPath();
+      ctx.moveTo(x1+ux*gap,y1+uy*gap);
+      ctx.lineTo(x2-ux*gap,y2-uy*gap);
+      ctx.stroke();
+
+      // Extension lines at ends
+      const ext=24*s;
+      ctx.lineWidth=1;ctx.setLineDash([4*s,4*s]);
+      ctx.beginPath();
+      if(Math.abs(dy)<Math.abs(dx)){
+        ctx.moveTo(x1,y1-ext);ctx.lineTo(x1,y1+ext);
+        ctx.moveTo(x2,y2-ext);ctx.lineTo(x2,y2+ext);
+      }else{
+        ctx.moveTo(x1-ext,y1);ctx.lineTo(x1+ext,y1);
+        ctx.moveTo(x2-ext,y2);ctx.lineTo(x2+ext,y2);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Arrowheads
+      const arrowSz=10*s;
+      ctx.fillStyle=m.color;
+      ctx.beginPath();
+      ctx.moveTo(x2-ux*gap,y2-uy*gap);
+      ctx.lineTo(x2-ux*gap-ux*arrowSz-nx*arrowSz*0.5,y2-uy*gap-uy*arrowSz-ny*arrowSz*0.5);
+      ctx.lineTo(x2-ux*gap-ux*arrowSz+nx*arrowSz*0.5,y2-uy*gap-uy*arrowSz+ny*arrowSz*0.5);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x1+ux*gap,y1+uy*gap);
+      ctx.lineTo(x1+ux*gap+ux*arrowSz-nx*arrowSz*0.5,y1+uy*gap+uy*arrowSz-ny*arrowSz*0.5);
+      ctx.lineTo(x1+ux*gap+ux*arrowSz+nx*arrowSz*0.5,y1+uy*gap+uy*arrowSz+ny*arrowSz*0.5);
+      ctx.fill();
+
+      // Dimension text
+      const px=len/s;
+      const spx=parseFloat(scalePx.value)||100;
+      const sv=parseFloat(scaleVal.value)||10;
+      const realVal=(px/spx*sv);
+      const unit=scaleUnit.value;
+      const label=realVal.toFixed(1)+' '+unit;
+
+      const fs=m.fontSize;
+      ctx.font=`bold ${fs*s}px Arial, sans-serif`;
+      ctx.textAlign='center';ctx.textBaseline='bottom';
+      const textW=ctx.measureText(label).width;
+      const mx=(x1+x2)/2,my=(y1+y2)/2;
+
+      // Text background
+      const padX=8*s,padY=4*s;
+      ctx.fillStyle='rgba(255,255,255,0.92)';
+      ctx.fillRect(mx-textW/2-padX,my-fs*s-padY*2,textW+padX*2,fs*s+padY*2);
+      ctx.strokeStyle=m.color;ctx.lineWidth=1;
+      ctx.strokeRect(mx-textW/2-padX,my-fs*s-padY*2,textW+padX*2,fs*s+padY*2);
+
+      ctx.fillStyle='#1a1d23';
+      ctx.fillText(label,mx,my-6*s);
+    }
+
+    function renderMeasureList(){
+      measureList.innerHTML='';
+      mCount.textContent=measures.length;
+      const spx=parseFloat(scalePx.value)||100;
+      const sv=parseFloat(scaleVal.value)||10;
+      const unit=scaleUnit.value;
+
+      measures.forEach((m,i)=>{
+        const dx=m.x2-m.x1,dy=m.y2-m.y1;
+        const pxDist=Math.sqrt(dx*dx+dy*dy);
+        const realVal=(pxDist/spx*sv);
+        const modeLabel=m.mode==='length'?'Length':m.mode==='height'?'Height':'Diagonal';
+
+        const item=document.createElement('div');item.className='measure-item';
+        item.innerHTML=`
+          <span class="m-color" style="background:${m.color};"></span>
+          <span class="m-desc">${modeLabel}</span>
+          <span class="m-px">${Math.round(pxDist)} px</span>
+          <strong style="color:var(--text);">${realVal.toFixed(1)} ${unit}</strong>
+          <button data-idx="${i}" class="m-delete">&#x2715;</button>
+        `;
+        measureList.appendChild(item);
+      });
+
+      measureList.querySelectorAll('.m-delete').forEach(b=>{
+        b.addEventListener('click',()=>{
+          measures.splice(parseInt(b.dataset.idx),1);
+          redrawAll();renderMeasureList();
+        });
+      });
+    }
+
+    // Re-render on settings change
+    [lineColor,textSize,scalePx,scaleVal,scaleUnit].forEach(el=>{
+      el.addEventListener('input',()=>{redrawAll();renderMeasureList();});
+    });
+
+    undoMeasure.addEventListener('click',()=>{
+      if(clickPoints.length>0){clickPoints=[];redrawAll();}
+      else if(measures.length>0){measures.pop();redrawAll();renderMeasureList();}
+    });
+
+    clearAll.addEventListener('click',()=>{
+      measures=[];clickPoints=[];
+      redrawAll();renderMeasureList();
+    });
+
+    // Download
+    dlBtn.addEventListener('click',()=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=origImage.naturalWidth;canvas.height=origImage.naturalHeight;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(origImage,0,0);
+      ctx.drawImage(drawCanvas,0,0);
+      canvas.toBlob(b=>{
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(b);a.download='product-with-dimensions.png';a.click();
+        toast('Downloaded!');
+      },'image/png');
+    });
+
+    function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
+
+    setActiveMode(modeLength);
+  </script>
+</body>
+</html>
