@@ -78,6 +78,7 @@
         <button id="toolEraser" class="active" title="Erase unwanted spots">&#x274C; Eraser</button>
         <button id="toolRestore" title="Restore missing parts">&#x1F504; Restore</button>
         <button id="toolSpot" title="Click to remove tiny spots">&#x1F4CD; Spot Remove</button>
+        <button id="toolMove" title="Move/reposition the subject">&#x2702;&#xFE0F; Move</button>
         <span class="sep"></span>
         <label>Size:</label>
         <input type="range" id="brushSize" min="4" max="120" value="24">
@@ -123,7 +124,8 @@
     const dlPng=document.getElementById('dlPng'),dlJpg=document.getElementById('dlJpg');
     const retryBtn=document.getElementById('retryBtn'),touchupBar=document.getElementById('touchupBar');
     const toolEraser=document.getElementById('toolEraser'),toolRestore=document.getElementById('toolRestore');
-    const toolSpot=document.getElementById('toolSpot'),brushSize=document.getElementById('brushSize');
+    const toolSpot=document.getElementById('toolSpot'),toolMove=document.getElementById('toolMove');
+    const brushSize=document.getElementById('brushSize');
     const brushSizeLabel=document.getElementById('brushSizeLabel');
     const undoBtn=document.getElementById('undoBtn'),resetEditBtn=document.getElementById('resetEditBtn');
 
@@ -133,6 +135,8 @@
     let currentTool='eraser',isDrawing=false;
     let undoStack=[],undoIndex=-1;
     const MAX_UNDO=30;
+    let moveOffsetX=0,moveOffsetY=0,isMoving=false,moveStartX=0,moveStartY=0;
+    let baseCanvas=null,baseCtx=null;
 
     // ===== FILE INPUT =====
     dropZone.addEventListener('click',()=>fileInput.click());
@@ -158,13 +162,17 @@
     toolEraser.addEventListener('click',()=>setTool('eraser'));
     toolRestore.addEventListener('click',()=>setTool('restore'));
     toolSpot.addEventListener('click',()=>setTool('spot'));
+    toolMove.addEventListener('click',()=>setTool('move'));
 
     function setTool(t){
+      // Commit pending move before switching tools
+      if(currentTool==='move'&&(moveOffsetX||moveOffsetY))commitMove();
       currentTool=t;
-      [toolEraser,toolRestore,toolSpot].forEach(b=>b.classList.remove('active'));
+      [toolEraser,toolRestore,toolSpot,toolMove].forEach(b=>b.classList.remove('active'));
       if(t==='eraser')toolEraser.classList.add('active');
       else if(t==='restore')toolRestore.classList.add('active');
       else if(t==='spot')toolSpot.classList.add('active');
+      else if(t==='move')toolMove.classList.add('active');
       updateBrushCursor();
     }
 
@@ -174,6 +182,11 @@
     });
 
     function updateBrushCursor(){
+      if(currentTool==='move'){
+        brushDot.style.display='none';
+        editCanvas.style.cursor='grab';
+        return;
+      }
       if(currentTool==='spot'){
         brushDot.style.display='none';
         editCanvas.style.cursor='crosshair';
@@ -190,13 +203,13 @@
     }
 
     // Canvas mouse/touch events
-    editCanvas.addEventListener('mousedown',startDraw);
-    editCanvas.addEventListener('mousemove',draw);
-    editCanvas.addEventListener('mouseup',endDraw);
-    editCanvas.addEventListener('mouseleave',endDraw);
-    editCanvas.addEventListener('touchstart',e=>{e.preventDefault();startDraw(e.touches[0]);},{passive:false});
-    editCanvas.addEventListener('touchmove',e=>{e.preventDefault();draw(e.touches[0]);},{passive:false});
-    editCanvas.addEventListener('touchend',endDraw);
+    editCanvas.addEventListener('mousedown',e=>{if(currentTool==='move')startMove(e);else startDraw(e);});
+    editCanvas.addEventListener('mousemove',e=>{if(currentTool==='move')doMove(e);else draw(e);});
+    editCanvas.addEventListener('mouseup',e=>{if(currentTool==='move')endMove();else endDraw();});
+    editCanvas.addEventListener('mouseleave',()=>{if(currentTool==='move')endMove();else endDraw();});
+    editCanvas.addEventListener('touchstart',e=>{e.preventDefault();if(currentTool==='move')startMove(e.touches[0]);else startDraw(e.touches[0]);},{passive:false});
+    editCanvas.addEventListener('touchmove',e=>{e.preventDefault();if(currentTool==='move')doMove(e.touches[0]);else draw(e.touches[0]);},{passive:false});
+    editCanvas.addEventListener('touchend',()=>{if(currentTool==='move')endMove();else endDraw();});
 
     canvasWrap.addEventListener('mousemove',e=>{
       if(!editCanvas.style.display||editCanvas.style.display==='none')return;
@@ -241,6 +254,74 @@
           }
         }
       }
+    }
+
+    // ===== MOVE TOOL =====
+    function getScale(){
+      const rect=editCanvas.getBoundingClientRect();
+      return {sx:editWidth/rect.width,sy:editHeight/rect.height};
+    }
+
+    function initBaseCanvas(){
+      if(!editCtx)return;
+      baseCanvas=document.createElement('canvas');
+      baseCanvas.width=editWidth;baseCanvas.height=editHeight;
+      baseCtx=baseCanvas.getContext('2d',{willReadFrequently:true});
+      baseCtx.drawImage(editCanvas,0,0);
+    }
+
+    function rerenderCanvas(){
+      if(!editCtx||!baseCanvas)return;
+      editCtx.clearRect(0,0,editWidth,editHeight);
+      // Draw grid for transparent bg
+      if(currentBg==='transparent'){
+        const gs=16;
+        for(let y=0;y<editHeight;y+=gs){
+          for(let x=0;x<editWidth;x+=gs){
+            editCtx.fillStyle=((x/gs+y/gs)%2===0)?'#e2e8f0':'#fff';
+            editCtx.fillRect(x,y,gs,gs);
+          }
+        }
+      }else if(currentBg==='white'){
+        editCtx.fillStyle='#ffffff';editCtx.fillRect(0,0,editWidth,editHeight);
+      }else{
+        editCtx.fillStyle=currentBg;editCtx.fillRect(0,0,editWidth,editHeight);
+      }
+      editCtx.drawImage(baseCanvas,moveOffsetX,moveOffsetY);
+    }
+
+    function startMove(e){
+      initBaseCanvas();
+      isMoving=true;
+      editCanvas.style.cursor='grabbing';
+      const {sx,sy}=getScale();
+      moveStartX=e.clientX*sx-moveOffsetX;
+      moveStartY=e.clientY*sy-moveOffsetY;
+    }
+
+    function doMove(e){
+      if(!isMoving||!baseCanvas)return;
+      const {sx,sy}=getScale();
+      moveOffsetX=Math.round(e.clientX*sx-moveStartX);
+      moveOffsetY=Math.round(e.clientY*sy-moveStartY);
+      rerenderCanvas();
+    }
+
+    function endMove(){
+      if(!isMoving)return;
+      isMoving=false;
+      editCanvas.style.cursor='grab';
+    }
+
+    function commitMove(){
+      if(!editCtx||!baseCanvas||(!moveOffsetX&&!moveOffsetY))return;
+      saveUndoState();
+      // Redraw final position with current bg
+      rerenderCanvas();
+      // Update baseCanvas to new committed state
+      baseCtx.clearRect(0,0,editWidth,editHeight);
+      baseCtx.drawImage(editCanvas,0,0);
+      moveOffsetX=0;moveOffsetY=0;
     }
 
     function applyBrush(x,y){
@@ -372,6 +453,7 @@
       editCanvas.style.display='block';
       undoStack=[];
       undoIndex=-1;
+      moveOffsetX=0;moveOffsetY=0;baseCanvas=null;baseCtx=null;
       saveUndoState();
       applyBg();
       setTool('eraser');
@@ -414,7 +496,7 @@
       editCanvas.style.display='none';
       touchupBar.style.display='none';
       resultBlob=null;origImageData=null;editCtx=null;
-      undoStack=[];undoIndex=-1;
+      undoStack=[];undoIndex=-1;moveOffsetX=0;moveOffsetY=0;baseCanvas=null;baseCtx=null;
       fileInput.value='';originalImg.src='';
       loading.style.display='none';
       currentBg='transparent';updateBgUI();
